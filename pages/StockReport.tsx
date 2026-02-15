@@ -1,14 +1,17 @@
 
 import React, { useMemo } from 'react';
-import { Product, Invoice, PurchaseOrder, ProductType } from '../types';
+import { Product, Invoice, PurchaseOrder, ProductType, SystemSettings, Warehouse } from '../types';
+import { exportToCSV } from '../utils/exportUtils';
+import { generateStockReportHTML } from '../templates/reportTemplates';
 
 interface StockReportProps {
   products: Product[];
   invoices: Invoice[];
   purchaseOrders: PurchaseOrder[];
+  systemSettings: SystemSettings;
 }
 
-const StockReport: React.FC<StockReportProps> = ({ products, invoices, purchaseOrders }) => {
+const StockReport: React.FC<StockReportProps> = ({ products, invoices, purchaseOrders, systemSettings }) => {
   
   const reportData = useMemo(() => {
     return products
@@ -31,9 +34,6 @@ const StockReport: React.FC<StockReportProps> = ({ products, invoices, purchaseO
 
         const currentStock = Object.values(product.stock).reduce((a, b) => a + b, 0);
 
-        // Note: Without historical snapshots, we assume current + export - import = opening (simplified)
-        // Or we just show Period Summary. Let's show Period Summary (Import/Export in system lifetime).
-        
         return {
             ...product,
             totalImported,
@@ -43,6 +43,32 @@ const StockReport: React.FC<StockReportProps> = ({ products, invoices, purchaseO
     });
   }, [products, invoices, purchaseOrders]);
 
+  const handleExportExcel = () => {
+    const data = reportData.map(item => ({
+        SKU: item.sku,
+        TenSanPham: item.name,
+        DVT: item.unit,
+        TongNhap: item.totalImported,
+        TongXuat: item.totalExported,
+        TonKho: item.currentStock,
+        TriGiaTon: item.currentStock * item.costPrice
+    }));
+    exportToCSV(
+        data, 
+        ['Mã SP', 'Tên Sản Phẩm', 'ĐVT', 'Tổng Nhập', 'Tổng Xuất', 'Tồn Cuối', 'Trị Giá Tồn'],
+        ['SKU', 'TenSanPham', 'DVT', 'TongNhap', 'TongXuat', 'TonKho', 'TriGiaTon'],
+        'Bao_Cao_Ton_Kho'
+    );
+  };
+
+  const handlePrintReport = () => {
+      const w = window.open('', '_blank');
+      if(w) {
+          w.document.write(generateStockReportHTML(reportData, systemSettings));
+          w.document.close();
+      }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
         <div className="flex justify-between items-center">
@@ -50,9 +76,14 @@ const StockReport: React.FC<StockReportProps> = ({ products, invoices, purchaseO
                 <h1 className="text-2xl font-bold text-slate-800">Báo cáo Xuất - Nhập - Tồn</h1>
                 <p className="text-slate-500 text-sm">Tổng hợp biến động kho hàng hóa</p>
             </div>
-            <button className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm">
-                <span className="material-icons-round">file_download</span> Xuất Excel
-            </button>
+            <div className="flex gap-2">
+                <button onClick={handlePrintReport} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm hover:bg-indigo-700 transition-colors">
+                    <span className="material-icons-round">print</span> In Báo Cáo
+                </button>
+                <button onClick={handleExportExcel} className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm hover:bg-slate-50 transition-colors">
+                    <span className="material-icons-round">file_download</span> Xuất Excel
+                </button>
+            </div>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">

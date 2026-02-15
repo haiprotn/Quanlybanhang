@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Invoice, Customer, Product, InvoiceItem, Employee, DeviceInfo, Warehouse } from '../types';
+import { Invoice, Customer, Product, InvoiceItem, Employee, DeviceInfo, Warehouse, SystemSettings } from '../types';
 import { generateRepairTicketHTML } from '../templates/repairTicketTemplate';
 import { generateReceiptHTML } from '../templates/receiptTemplate';
 import { suggestRepairNote } from '../services/geminiService';
@@ -13,6 +13,7 @@ interface RepairTicketsProps {
   onUpdateInvoice: (invoiceId: string, updates: Partial<Invoice>) => void;
   onAddInvoice: (invoice: Invoice) => void;
   onAddCustomer: (customer: Customer) => void;
+  systemSettings: SystemSettings;
 }
 
 const STATUS_CONFIG = {
@@ -26,9 +27,10 @@ const STATUS_CONFIG = {
   CANCELLED: { label: 'Đã hủy', color: 'bg-gray-200 text-gray-500 border-gray-300', icon: 'cancel' },
 };
 
-const RepairTickets: React.FC<RepairTicketsProps> = ({ invoices, customers, products, currentUser, onUpdateInvoice, onAddInvoice, onAddCustomer }) => {
+const RepairTickets: React.FC<RepairTicketsProps> = ({ invoices, customers, products, currentUser, onUpdateInvoice, onAddInvoice, onAddCustomer, systemSettings }) => {
   const [activeTab, setActiveTab] = useState<string>('ACTIVE'); 
-  
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+
   // -- Modals --
   const [selectedTicket, setSelectedTicket] = useState<Invoice | null>(null);
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
@@ -66,10 +68,17 @@ const RepairTickets: React.FC<RepairTicketsProps> = ({ invoices, customers, prod
   }, [invoices]);
 
   const filteredTickets = useMemo(() => {
+    // If specific status filter is active, override the tab logic
+    if (statusFilter !== 'ALL') {
+        return repairTickets.filter(t => t.repairStatus === statusFilter);
+    }
+
+    // Default Tab Logic
     if (activeTab === 'COMPLETED') return repairTickets.filter(t => t.repairStatus === 'DELIVERED');
     if (activeTab === 'CANCELLED') return repairTickets.filter(t => t.repairStatus === 'CANCELLED');
+    // ACTIVE: Everything not DELIVERED and not CANCELLED
     return repairTickets.filter(t => t.repairStatus !== 'DELIVERED' && t.repairStatus !== 'CANCELLED');
-  }, [repairTickets, activeTab]);
+  }, [repairTickets, activeTab, statusFilter]);
 
   // Sync state if invoice updates from outside (though we usually close modal on update)
   useEffect(() => {
@@ -119,7 +128,7 @@ const RepairTickets: React.FC<RepairTicketsProps> = ({ invoices, customers, prod
 
     if(print) {
         const w = window.open('', '_blank');
-        w?.document.write(generateRepairTicketHTML(newTicket, cust, newTicket.deviceInfo!.symptoms, newTicket.note || ''));
+        w?.document.write(generateRepairTicketHTML(newTicket, cust, newTicket.deviceInfo!.symptoms, newTicket.note || '', systemSettings));
         w?.document.close();
     }
   };
@@ -210,7 +219,7 @@ const RepairTickets: React.FC<RepairTicketsProps> = ({ invoices, customers, prod
       // Open print window immediately
       const w = window.open('', '_blank');
       if (w) {
-          w.document.write(generateReceiptHTML(invoiceForPrint, cust));
+          w.document.write(generateReceiptHTML(invoiceForPrint, cust, systemSettings));
           w.document.close();
       } else {
           alert("Vui lòng cho phép mở Popup để in hóa đơn");
@@ -271,25 +280,41 @@ const RepairTickets: React.FC<RepairTicketsProps> = ({ invoices, customers, prod
             <button 
                 type="button"
                 onClick={() => setIsReceptionModalOpen(true)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-md animate-pulse"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-md"
             >
                 <span className="material-icons-round">add_circle</span> Tiếp nhận máy
             </button>
         </div>
       </div>
       
-      {/* Tab Filter */}
-      <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm w-fit">
-           {[{id:'ACTIVE', label:'Đang xử lý'}, {id:'COMPLETED', label:'Đã trả máy'}, {id:'CANCELLED', label:'Đã hủy'}].map(tab => (
-             <button
-                type="button"
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === tab.id ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
-             >
-               {tab.label}
-             </button>
-           ))}
+      {/* Tab Filter & Status Filter */}
+      <div className="flex justify-between items-center">
+        <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm w-fit">
+            {[{id:'ACTIVE', label:'Đang xử lý'}, {id:'COMPLETED', label:'Đã trả máy'}, {id:'CANCELLED', label:'Đã hủy'}].map(tab => (
+              <button
+                  type="button"
+                  key={tab.id}
+                  onClick={() => { setActiveTab(tab.id); setStatusFilter('ALL'); }}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === tab.id && statusFilter === 'ALL' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+              >
+                {tab.label}
+              </button>
+            ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-slate-500">Lọc trạng thái:</span>
+            <select
+                className="border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+            >
+                <option value="ALL">Tất cả (Theo Tab)</option>
+                {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                    <option key={key} value={key}>{config.label}</option>
+                ))}
+            </select>
+        </div>
       </div>
 
       {/* List */}
@@ -334,259 +359,255 @@ const RepairTickets: React.FC<RepairTicketsProps> = ({ invoices, customers, prod
                                 {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.phone}</option>)}
                             </select>
                         </div>
-                        <button type="button" onClick={() => setIsAddCustModalOpen(true)} className="bg-green-600 text-white p-2 rounded mb-[1px]"><span className="material-icons-round">person_add</span></button>
+                        <button type="button" onClick={() => setIsAddCustModalOpen(true)} className="bg-indigo-50 text-indigo-700 px-3 py-2 rounded font-bold hover:bg-indigo-100"><span className="material-icons-round">person_add</span></button>
                     </div>
 
-                    {/* Device Info */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase">Tên máy / Model</label>
-                            <input type="text" className="w-full border p-2 rounded" value={receptionData.deviceName} onChange={e => setReceptionData({...receptionData, deviceName: e.target.value})} placeholder="VD: Dell XPS 15" />
+                            <label className="text-xs font-bold text-slate-500 uppercase">Tên thiết bị / Model</label>
+                            <input className="w-full border p-2 rounded font-bold" value={receptionData.deviceName} onChange={e => setReceptionData({...receptionData, deviceName: e.target.value})} placeholder="VD: Laptop Dell XPS 13" />
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase">Mật khẩu</label>
-                            <input type="text" className="w-full border p-2 rounded" value={receptionData.password} onChange={e => setReceptionData({...receptionData, password: e.target.value})} />
+                            <label className="text-xs font-bold text-slate-500 uppercase">Mật khẩu máy (Nếu có)</label>
+                            <input className="w-full border p-2 rounded" value={receptionData.password} onChange={e => setReceptionData({...receptionData, password: e.target.value})} placeholder="VD: 1234" />
                         </div>
                     </div>
+                    
                     <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase">Tình trạng (Khách báo)</label>
-                        <textarea className="w-full border p-2 rounded h-20" value={receptionData.symptoms} onChange={e => setReceptionData({...receptionData, symptoms: e.target.value})} placeholder="Mô tả lỗi..."></textarea>
+                        <label className="text-xs font-bold text-slate-500 uppercase">Tình trạng / Mô tả lỗi (Khách báo)</label>
+                        <textarea className="w-full border p-2 rounded h-20 resize-none" value={receptionData.symptoms} onChange={e => setReceptionData({...receptionData, symptoms: e.target.value})} placeholder="VD: Máy không lên nguồn, đèn báo nhấp nháy..." />
                     </div>
-                    <div className="relative">
-                        <label className="text-xs font-bold text-slate-500 uppercase">Ghi chú tiếp nhận (AI Support)</label>
-                        <textarea className="w-full border p-2 rounded h-20 bg-orange-50" value={receptionNote} onChange={e => setReceptionNote(e.target.value)}></textarea>
-                        <button type="button" onClick={handleSuggestNote} disabled={suggesting} className="absolute right-2 bottom-2 text-orange-500 hover:text-orange-700"><span className="material-icons-round">auto_awesome</span></button>
+
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase">Phụ kiện kèm theo</label>
+                        <input className="w-full border p-2 rounded" value={receptionData.accessories} onChange={e => setReceptionData({...receptionData, accessories: e.target.value})} placeholder="VD: Sạc, Chuột, Túi..." />
+                    </div>
+
+                    <div className="border-t pt-4">
+                         <div className="flex justify-between items-center mb-2">
+                             <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><span className="material-icons-round text-sm">sticky_note_2</span> Ghi chú nhận máy (In phiếu)</label>
+                             <button type="button" onClick={handleSuggestNote} disabled={suggesting || !receptionData.symptoms} className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded hover:bg-purple-100 font-bold flex items-center gap-1">
+                                 {suggesting ? 'Đang viết...' : <><span className="material-icons-round text-sm">auto_awesome</span> Gợi ý AI</>}
+                             </button>
+                         </div>
+                         <textarea className="w-full border p-2 rounded h-16 resize-none text-sm bg-slate-50" value={receptionNote} onChange={e => setReceptionNote(e.target.value)} placeholder="Ghi chú thêm..." />
                     </div>
                 </div>
-                <div className="p-4 border-t border-slate-100 flex gap-3">
-                    <button type="button" onClick={() => handleCreateReception(false)} className="flex-1 py-3 bg-slate-200 font-bold rounded text-slate-700">Lưu phiếu</button>
-                    <button type="button" onClick={() => handleCreateReception(true)} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded">Lưu & In Phiếu</button>
+                <div className="p-4 bg-slate-50 border-t flex gap-2 justify-end">
+                    <button type="button" onClick={() => setIsReceptionModalOpen(false)} className="px-4 py-2 bg-white border rounded text-slate-600 font-bold hover:bg-slate-100">Hủy</button>
+                    <button type="button" onClick={() => handleCreateReception(true)} className="px-4 py-2 bg-indigo-600 text-white rounded font-bold hover:bg-indigo-700 shadow flex items-center gap-2">
+                        <span className="material-icons-round">print</span> Lưu & In Phiếu
+                    </button>
                 </div>
             </div>
         </div>
       )}
 
-      {/* --- MODAL: XỬ LÝ (Role Based) --- */}
-      {isProcessModalOpen && selectedTicket && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-             <div className="bg-white rounded-xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-                 <div className="bg-slate-800 text-white p-4 flex justify-between items-center">
-                     <div>
-                         <h2 className="font-bold text-xl">{selectedTicket.customerName} - {selectedTicket.deviceInfo?.deviceName}</h2>
-                         <p className="text-xs text-slate-400">Phiếu: {selectedTicket.id}</p>
-                     </div>
-                     <button type="button" onClick={() => setIsProcessModalOpen(false)}><span className="material-icons-round">close</span></button>
-                 </div>
-                 
-                 <div className="flex-1 flex overflow-hidden">
-                     {/* LEFT: TECH AREA */}
-                     <div className="w-1/3 border-r border-slate-200 bg-slate-50 p-4 overflow-y-auto">
-                         <h3 className="font-bold text-indigo-700 mb-2 flex items-center gap-2">
-                             <span className="material-icons-round">handyman</span> KỸ THUẬT VIÊN
-                         </h3>
-                         <div className="bg-white p-3 rounded border shadow-sm mb-4">
-                             <p className="text-xs text-slate-500 font-bold">Lỗi khách báo:</p>
-                             <p className="text-sm text-red-600 mb-2">{selectedTicket.deviceInfo?.symptoms}</p>
-                             
-                             <label className="text-xs text-slate-500 font-bold block mt-3">Kết quả kiểm tra / Chẩn đoán:</label>
-                             <textarea 
-                                disabled={!isTech && selectedTicket.repairStatus !== 'RECEIVED'}
-                                className="w-full border border-slate-300 rounded p-2 text-sm h-32 mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
-                                value={tempDiagnosis}
-                                onChange={(e) => setTempDiagnosis(e.target.value)}
-                                placeholder="Kỹ thuật nhập kết quả kiểm tra..."
-                             ></textarea>
-                         </div>
-                         
-                         <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
-                             <label className="text-xs text-yellow-800 font-bold block">Ghi chú nội bộ:</label>
-                             <textarea 
-                                className="w-full bg-transparent border-b border-yellow-300 text-sm h-20 outline-none mt-1"
-                                value={tempNote}
-                                onChange={(e) => setTempNote(e.target.value)}
-                             ></textarea>
-                         </div>
-                         
-                         {isTech && (
-                             <button type="button" onClick={() => handleUpdateTicket()} className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold shadow-sm">
-                                 Cập nhật thông tin KT
-                             </button>
-                         )}
-                     </div>
-
-                     {/* MIDDLE: QUOTING (For Sales & Tech) */}
-                     <div className="w-1/3 border-r border-slate-200 flex flex-col bg-white">
-                         <div className="p-3 border-b border-slate-100 bg-slate-50">
-                             <input type="text" placeholder="Tìm linh kiện..." className="w-full border rounded p-2 text-sm" value={productSearch} onChange={e => setProductSearch(e.target.value)} />
-                         </div>
-                         <div className="flex-1 overflow-y-auto p-2">
-                             {products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase())).map(p => (
-                                 <button type="button" key={p.id} onClick={() => addItem(p)} className="w-full text-left p-2 hover:bg-indigo-50 border-b border-slate-100 flex justify-between items-center group">
-                                     <div>
-                                         <p className="text-sm font-semibold">{p.name}</p>
-                                         <p className="text-xs text-slate-500">Kho: {p.stock[Warehouse.TAY_PHAT]}</p>
-                                     </div>
-                                     <span className="text-indigo-600 font-bold text-sm">{p.price.toLocaleString()}</span>
-                                 </button>
-                             ))}
-                         </div>
-                     </div>
-
-                     {/* RIGHT: SALES / INVOICE */}
-                     <div className="w-1/3 flex flex-col bg-slate-50">
-                         <div className="p-4 border-b border-slate-200">
-                             <h3 className="font-bold text-green-700 flex items-center gap-2">
-                                 <span className="material-icons-round">payments</span> BÁO GIÁ & THANH TOÁN
-                             </h3>
-                             <StatusBadge status={selectedTicket.repairStatus || 'RECEIVED'} />
-                         </div>
-                         <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                             {tempItems.map((item, idx) => (
-                                 <div key={idx} className="flex justify-between items-center bg-white p-2 rounded shadow-sm border">
-                                     <div className="flex-1">
-                                         <p className="text-sm font-medium">{item.productName}</p>
-                                         <p className="text-xs text-slate-500">{item.price.toLocaleString()} x {item.quantity}</p>
-                                     </div>
-                                     <div className="flex items-center gap-2">
-                                         <span className="font-bold text-indigo-700">{(item.price * item.quantity).toLocaleString()}</span>
-                                         {(isSales || isTech) && <button type="button" onClick={() => setTempItems(prev => prev.filter(i => i.productId !== item.productId))} className="text-red-400"><span className="material-icons-round text-sm">close</span></button>}
-                                     </div>
-                                 </div>
-                             ))}
-                             {tempItems.length === 0 && <p className="text-center text-slate-400 text-sm mt-4">Chưa có linh kiện/dịch vụ</p>}
-                         </div>
-                         
-                         <div className="p-4 bg-white border-t border-slate-200">
-                             <div className="flex justify-between mb-4 text-lg font-bold">
-                                 <span>Tổng cộng:</span>
-                                 <span className="text-indigo-700">{tempItems.reduce((sum,i) => sum+(i.price*i.quantity),0).toLocaleString()} ₫</span>
-                             </div>
-                             
-                             {/* ACTIONS FLOW */}
-                             <div className="space-y-2">
-                                 {/* 1. Tech sends Quote */}
-                                 {selectedTicket.repairStatus === 'CHECKING' && (
-                                     <button 
-                                        type="button" 
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            handleUpdateTicket('QUOTING');
-                                        }} 
-                                        className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded font-bold"
-                                     >
-                                        Chuyển Báo Giá (Cho Sale)
-                                     </button>
-                                 )}
-                                 
-                                 {/* 2. Sales OR Tech Confirms with Customer (Flexible Role) */}
-                                 {((isSales || isTech) && selectedTicket.repairStatus === 'QUOTING') && (
-                                     <button 
-                                        type="button" 
-                                        onClick={(e) => { 
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            handleUpdateTicket('IN_PROGRESS'); 
-                                        }} 
-                                        className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-bold shadow-md transition-transform active:scale-95"
-                                     >
-                                         Khách Chốt Sửa (Tiến hành)
-                                     </button>
-                                 )}
-                                 
-                                 {/* 3. Tech Finishes */}
-                                 {(isTech && selectedTicket.repairStatus === 'IN_PROGRESS') && (
-                                     <button 
-                                        type="button" 
-                                        onClick={(e) => { 
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            handleUpdateTicket('COMPLETED'); 
-                                        }} 
-                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold shadow-md transition-transform active:scale-95"
-                                     >
-                                         Báo Đã Sửa Xong
-                                     </button>
-                                 )}
-                                 
-                                 {/* 4. Sales Creates Invoice */}
-                                 {(isSales && selectedTicket.repairStatus === 'COMPLETED') && (
-                                     <button type="button" onClick={handleInitiatePayment} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded font-bold flex justify-center items-center gap-2 shadow-lg animate-bounce-short">
-                                         <span className="material-icons-round">receipt_long</span> LẬP HÓA ĐƠN & TRẢ MÁY
-                                     </button>
-                                 )}
-
-                                 <button type="button" onClick={() => handleUpdateTicket()} className="w-full border border-slate-300 text-slate-600 py-2 rounded font-medium hover:bg-slate-100">Lưu tạm (Không đổi trạng thái)</button>
-                             </div>
-                         </div>
-                     </div>
-                 </div>
-             </div>
-          </div>
-      )}
-
-      {/* --- PAYMENT MODAL --- */}
-      {isPaymentModalOpen && selectedTicket && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-              <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-                  <div className="bg-purple-600 p-4 text-white flex justify-between items-center">
-                      <h3 className="font-bold text-lg flex items-center gap-2">
-                          <span className="material-icons-round">point_of_sale</span> Thanh toán sửa chữa
-                      </h3>
-                      <button onClick={() => setIsPaymentModalOpen(false)}><span className="material-icons-round">close</span></button>
-                  </div>
-                  
-                  <div className="p-6 space-y-4">
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                          <span className="text-slate-500 font-medium">Tổng tiền dịch vụ:</span>
-                          <span className="text-xl font-bold text-purple-700">{currentTotal.toLocaleString()} ₫</span>
-                      </div>
-                      
-                      <div>
-                          <label className="block text-sm font-bold text-slate-700 mb-1">Khách thanh toán:</label>
-                          <input 
-                              type="number" 
-                              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-lg font-bold text-slate-800 outline-none focus:ring-2 focus:ring-purple-500"
-                              value={paymentAmount}
-                              onChange={(e) => setPaymentAmount(Number(e.target.value))}
-                          />
-                      </div>
-
-                      <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex justify-between items-center">
-                          <span className="text-sm font-bold text-slate-600">
-                              {paymentAmount < currentTotal ? 'Khách còn nợ:' : 'Tiền thừa trả khách:'}
-                          </span>
-                          <span className={`text-lg font-bold ${paymentAmount < currentTotal ? 'text-red-600' : 'text-green-600'}`}>
-                              {Math.abs(currentTotal - paymentAmount).toLocaleString()} ₫
-                          </span>
-                      </div>
-                      
-                      {paymentAmount < currentTotal && (
-                          <div className="flex items-start gap-2 text-xs text-amber-600 bg-amber-50 p-2 rounded">
-                              <span className="material-icons-round text-sm">warning</span>
-                              <span>Số tiền thiếu sẽ được tự động ghi vào công nợ của khách hàng này.</span>
-                          </div>
-                      )}
-
-                      <button 
-                          onClick={handleConfirmPaymentAndPrint}
-                          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg shadow-lg shadow-purple-200 mt-2 transition-transform active:scale-95 flex items-center justify-center gap-2"
-                      >
-                          <span className="material-icons-round">print</span> Xác nhận & In phiếu
-                      </button>
+      {/* --- MODAL: THÊM KHÁCH HÀNG (LỒNG TRONG TIẾP NHẬN) --- */}
+      {isAddCustModalOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/20">
+              <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
+                  <h3 className="font-bold text-lg">Thêm khách hàng nhanh</h3>
+                  <input className="w-full border p-2 rounded" placeholder="Tên khách hàng" value={newCustData.name} onChange={e => setNewCustData({...newCustData, name: e.target.value})} />
+                  <input className="w-full border p-2 rounded" placeholder="Số điện thoại" value={newCustData.phone} onChange={e => setNewCustData({...newCustData, phone: e.target.value})} />
+                  <input className="w-full border p-2 rounded" placeholder="Địa chỉ" value={newCustData.address} onChange={e => setNewCustData({...newCustData, address: e.target.value})} />
+                  <div className="flex gap-2 pt-2">
+                      <button type="button" onClick={() => setIsAddCustModalOpen(false)} className="flex-1 bg-slate-100 py-2 rounded font-bold">Hủy</button>
+                      <button type="button" onClick={handleSaveNewCustomer} className="flex-1 bg-indigo-600 text-white py-2 rounded font-bold">Lưu</button>
                   </div>
               </div>
           </div>
       )}
 
-      {/* Add Cust Modal (Simple version) */}
-      {isAddCustModalOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50">
-              <div className="bg-white p-6 rounded-lg shadow-xl w-96 space-y-3">
-                  <h3 className="font-bold">Thêm khách hàng nhanh</h3>
-                  <input className="w-full border p-2 rounded" placeholder="Tên" value={newCustData.name} onChange={e=>setNewCustData({...newCustData, name: e.target.value})} />
-                  <input className="w-full border p-2 rounded" placeholder="SĐT" value={newCustData.phone} onChange={e=>setNewCustData({...newCustData, phone: e.target.value})} />
-                  <input className="w-full border p-2 rounded" placeholder="Địa chỉ" value={newCustData.address} onChange={e=>setNewCustData({...newCustData, address: e.target.value})} />
-                  <button type="button" onClick={handleSaveNewCustomer} className="w-full bg-green-600 text-white py-2 rounded font-bold">Lưu</button>
+      {/* --- MODAL: XỬ LÝ KỸ THUẬT / BÁO GIÁ --- */}
+      {isProcessModalOpen && selectedTicket && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+             <div className="bg-white rounded-xl w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col max-h-[95vh]">
+                 <div className="bg-slate-800 text-white p-4 flex justify-between items-center">
+                     <div>
+                         <h2 className="font-bold text-lg flex items-center gap-2">
+                            Phiếu: {selectedTicket.id} 
+                            <span className="bg-white/20 px-2 py-0.5 rounded text-sm font-normal">{selectedTicket.customerName}</span>
+                         </h2>
+                     </div>
+                     <button type="button" onClick={() => setIsProcessModalOpen(false)}><span className="material-icons-round">close</span></button>
+                 </div>
+                 
+                 <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                     {/* Left: Info & Diagnosis */}
+                     <div className="md:col-span-1 space-y-4 border-r pr-6">
+                         <div className="bg-slate-50 p-3 rounded-lg border">
+                             <h4 className="font-bold text-slate-700 text-sm mb-2 uppercase">Thông tin thiết bị</h4>
+                             <p className="text-sm"><strong>Máy:</strong> {selectedTicket.deviceInfo?.deviceName}</p>
+                             <p className="text-sm"><strong>Lỗi:</strong> {selectedTicket.deviceInfo?.symptoms}</p>
+                             <p className="text-sm"><strong>Pass:</strong> {selectedTicket.deviceInfo?.password || '---'}</p>
+                             <p className="text-sm"><strong>PK:</strong> {selectedTicket.deviceInfo?.accessories || '---'}</p>
+                         </div>
+
+                         <div>
+                             <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Chẩn đoán kỹ thuật / Kết quả kiểm tra</label>
+                             <textarea 
+                                className="w-full border p-2 rounded h-32 resize-none text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-yellow-50" 
+                                placeholder="Nhập kết quả kiểm tra..."
+                                value={tempDiagnosis}
+                                onChange={e => setTempDiagnosis(e.target.value)}
+                                disabled={!isTech}
+                             />
+                         </div>
+                         
+                         <div>
+                             <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Ghi chú nội bộ</label>
+                             <textarea 
+                                className="w-full border p-2 rounded h-20 resize-none text-sm" 
+                                value={tempNote}
+                                onChange={e => setTempNote(e.target.value)}
+                             />
+                         </div>
+                     </div>
+
+                     {/* Right: Items & Actions */}
+                     <div className="md:col-span-2 flex flex-col h-full">
+                         <div className="flex-1 flex flex-col">
+                             <div className="flex justify-between items-center mb-2">
+                                 <h4 className="font-bold text-slate-700 uppercase text-sm">Linh kiện & Dịch vụ sử dụng</h4>
+                                 <div className="relative">
+                                     <input 
+                                        className="border rounded-full pl-8 pr-3 py-1 text-sm w-48 focus:w-64 transition-all outline-none" 
+                                        placeholder="Tìm linh kiện..."
+                                        value={productSearch}
+                                        onChange={e => setProductSearch(e.target.value)}
+                                     />
+                                     <span className="material-icons-round absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                                     {productSearch && (
+                                         <div className="absolute top-full right-0 mt-1 w-64 bg-white shadow-xl border rounded-lg max-h-48 overflow-y-auto z-10">
+                                             {products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase())).map(p => (
+                                                 <button 
+                                                    key={p.id} 
+                                                    type="button"
+                                                    onClick={() => { addItem(p); setProductSearch(''); }}
+                                                    className="w-full text-left p-2 hover:bg-indigo-50 text-sm border-b truncate"
+                                                 >
+                                                     {p.name} - <span className="font-bold">{p.price.toLocaleString()}</span>
+                                                 </button>
+                                             ))}
+                                         </div>
+                                     )}
+                                 </div>
+                             </div>
+
+                             <div className="border rounded-lg flex-1 overflow-y-auto bg-slate-50 mb-4 p-2">
+                                 {tempItems.length === 0 ? (
+                                     <div className="h-full flex items-center justify-center text-slate-400 text-sm italic">Chưa có linh kiện/dịch vụ nào</div>
+                                 ) : (
+                                     <table className="w-full text-sm text-left">
+                                         <thead>
+                                             <tr className="text-slate-500 border-b">
+                                                 <th className="pb-2">Tên</th>
+                                                 <th className="pb-2 w-16 text-center">SL</th>
+                                                 <th className="pb-2 w-24 text-right">Giá</th>
+                                                 <th className="pb-2 w-10"></th>
+                                             </tr>
+                                         </thead>
+                                         <tbody>
+                                             {tempItems.map((item, idx) => (
+                                                 <tr key={idx} className="border-b border-slate-200 last:border-0">
+                                                     <td className="py-2">{item.productName}</td>
+                                                     <td className="py-2 text-center font-bold">
+                                                         <input 
+                                                            type="number" 
+                                                            className="w-10 text-center bg-transparent border-b border-slate-300 focus:border-indigo-500 outline-none"
+                                                            value={item.quantity}
+                                                            onChange={e => {
+                                                                const newQ = Number(e.target.value);
+                                                                setTempItems(prev => prev.map((it, i) => i === idx ? {...it, quantity: newQ} : it));
+                                                            }}
+                                                         />
+                                                     </td>
+                                                     <td className="py-2 text-right">{item.price.toLocaleString()}</td>
+                                                     <td className="py-2 text-right">
+                                                         <button onClick={() => setTempItems(prev => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600"><span className="material-icons-round text-sm">close</span></button>
+                                                     </td>
+                                                 </tr>
+                                             ))}
+                                         </tbody>
+                                     </table>
+                                 )}
+                             </div>
+
+                             <div className="flex justify-between items-center text-lg font-bold bg-indigo-50 p-3 rounded-lg mb-4 text-indigo-800">
+                                 <span>Tổng chi phí dự kiến:</span>
+                                 <span>{currentTotal.toLocaleString()} ₫</span>
+                             </div>
+
+                             {/* Status Actions */}
+                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                 <button onClick={() => handleUpdateTicket('CHECKING')} className={`p-2 rounded font-bold text-sm bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-300 ${!isTech && 'opacity-50'}`}>Đang kiểm tra</button>
+                                 <button onClick={() => handleUpdateTicket('QUOTING')} className={`p-2 rounded font-bold text-sm bg-orange-100 text-orange-800 hover:bg-orange-200 border border-orange-300 ${!isSales && 'opacity-50'}`}>Báo giá khách</button>
+                                 <button onClick={() => handleUpdateTicket('WAITING_PARTS')} className={`p-2 rounded font-bold text-sm bg-pink-100 text-pink-800 hover:bg-pink-200 border border-pink-300 ${!isTech && 'opacity-50'}`}>Chờ linh kiện</button>
+                                 <button onClick={() => handleUpdateTicket('IN_PROGRESS')} className={`p-2 rounded font-bold text-sm bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-300 ${!isTech && 'opacity-50'}`}>Tiến hành sửa</button>
+                                 <button onClick={() => handleUpdateTicket('COMPLETED')} className={`p-2 rounded font-bold text-sm bg-green-100 text-green-800 hover:bg-green-200 border border-green-300 ${!isTech && 'opacity-50'}`}>Đã xong</button>
+                                 <button onClick={() => handleUpdateTicket('CANCELLED')} className="p-2 rounded font-bold text-sm bg-slate-200 text-slate-600 hover:bg-slate-300 border border-slate-300">Hủy phiếu</button>
+                                 
+                                 <button 
+                                    onClick={handleInitiatePayment} 
+                                    className="col-span-2 p-2 rounded font-bold text-sm bg-purple-600 text-white hover:bg-purple-700 shadow-md flex justify-center items-center gap-2"
+                                 >
+                                    <span className="material-icons-round">payments</span> Trả Máy & Thu Tiền
+                                 </button>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+                 
+                 <div className="bg-slate-100 p-4 border-t flex justify-between items-center text-sm text-slate-500">
+                     <span>Cập nhật lần cuối: {new Date().toLocaleString()}</span>
+                     <button onClick={() => handleUpdateTicket()} className="bg-slate-800 text-white px-6 py-2 rounded font-bold hover:bg-slate-900">Lưu thay đổi</button>
+                 </div>
+             </div>
+          </div>
+      )}
+
+      {/* --- MODAL: THANH TOÁN --- */}
+      {isPaymentModalOpen && selectedTicket && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+                  <div className="text-center">
+                      <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <span className="material-icons-round text-3xl">check_circle</span>
+                      </div>
+                      <h3 className="font-bold text-xl text-slate-800">Xác nhận trả máy</h3>
+                      <p className="text-slate-500 text-sm mt-1">Khách hàng: {selectedTicket.customerName}</p>
+                  </div>
+                  
+                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                      <div className="flex justify-between mb-2">
+                          <span className="text-slate-600 font-medium">Tổng chi phí:</span>
+                          <span className="font-bold text-slate-800">{currentTotal.toLocaleString()} ₫</span>
+                      </div>
+                      <div>
+                          <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Khách thanh toán</label>
+                          <input 
+                            type="number" 
+                            className="w-full border-2 border-green-500 rounded p-2 text-xl font-bold text-green-700 text-right focus:outline-none" 
+                            value={paymentAmount}
+                            onChange={e => setPaymentAmount(Number(e.target.value))}
+                          />
+                      </div>
+                      <div className="flex justify-between mt-2 text-sm">
+                          <span className="text-slate-500">Còn nợ:</span>
+                          <span className={`font-bold ${currentTotal - paymentAmount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                              {Math.max(0, currentTotal - paymentAmount).toLocaleString()} ₫
+                          </span>
+                      </div>
+                  </div>
+
+                  <button 
+                    onClick={handleConfirmPaymentAndPrint}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-lg shadow-green-200 transition-transform active:scale-95 flex items-center justify-center gap-2"
+                  >
+                      <span className="material-icons-round">print</span> Hoàn tất & In hóa đơn
+                  </button>
+                  <button onClick={() => setIsPaymentModalOpen(false)} className="w-full text-slate-500 font-bold text-sm py-2 hover:bg-slate-50 rounded">Quay lại</button>
               </div>
           </div>
       )}

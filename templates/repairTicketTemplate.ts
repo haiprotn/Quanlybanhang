@@ -1,6 +1,7 @@
-import { Invoice, Customer } from '../types';
 
-export const generateRepairTicketHTML = (invoice: Invoice, customer: Customer | undefined, symptoms: string, technicalNote: string) => {
+import { Invoice, Customer, SystemSettings } from '../types';
+
+export const generateRepairTicketHTML = (invoice: Invoice, customer: Customer | undefined, symptoms: string, technicalNote: string, settings: SystemSettings) => {
   const date = new Date(invoice.date).toLocaleString('vi-VN');
   const deviceInfo = invoice.deviceInfo || { deviceName: '---', password: '', accessories: '' };
   
@@ -35,15 +36,15 @@ export const generateRepairTicketHTML = (invoice: Invoice, customer: Customer | 
         .signature-section { display: flex; justify-content: space-between; margin-top: 25px; text-align: center; page-break-inside: avoid; }
         .signature-box { width: 45%; }
         .signature-box strong { display: block; margin-bottom: 40px; font-size: 11px; text-transform: uppercase; }
-        .note { font-size: 10px; font-style: italic; margin-top: 15px; text-align: center; border-top: 1px solid #eee; padding-top: 5px; }
+        .note { font-size: 10px; font-style: italic; margin-top: 15px; text-align: center; border-top: 1px solid #eee; padding-top: 5px; white-space: pre-line; }
       </style>
     </head>
     <body>
       <div class="header">
         <div class="company-info">
-          <h1>GIẢI PHÁP TÂY PHÁT & TNC</h1>
-          <div>ĐC: 123 Đường ABC, Quận XYZ, TP.HCM</div>
-          <div>Hotline: 0909.888.999</div>
+          <h1>${settings.companyName}</h1>
+          <div>ĐC: ${settings.companyAddress}</div>
+          <div>Hotline: ${settings.companyPhone}</div>
         </div>
         <div class="ticket-info">
           <div><strong>Số phiếu:</strong> ${invoice.id}</div>
@@ -95,9 +96,7 @@ export const generateRepairTicketHTML = (invoice: Invoice, customer: Customer | 
       </div>
 
       <div class="note">
-        * Quý khách vui lòng giữ biên nhận để nhận máy.<br/>
-        * Trung tâm không chịu trách nhiệm về dữ liệu cá nhân nếu không được yêu cầu sao lưu.<br/>
-        * Thiết bị gửi quá 30 ngày không đến nhận sẽ được thanh lý theo quy định.
+        ${settings.repairTicketFooterNote}
       </div>
 
       <div class="signature-section">

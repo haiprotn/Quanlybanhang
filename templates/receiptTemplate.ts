@@ -1,6 +1,7 @@
-import { Invoice, Customer } from '../types';
 
-export const generateReceiptHTML = (invoice: Invoice, customer: Customer | undefined) => {
+import { Invoice, Customer, SystemSettings } from '../types';
+
+export const generateReceiptHTML = (invoice: Invoice, customer: Customer | undefined, settings: SystemSettings) => {
   const date = new Date(invoice.date).toLocaleString('vi-VN');
   
   // Logic: Nếu hơn 8 sản phẩm thì in khổ A4, ngược lại in khổ A5
@@ -42,7 +43,7 @@ export const generateReceiptHTML = (invoice: Invoice, customer: Customer | undef
         .total-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
         .total-final { font-weight: bold; font-size: 16px; margin-top: 5px; }
         
-        .footer { margin-top: 40px; text-align: center; font-style: italic; font-size: 11px; color: #555; }
+        .footer { margin-top: 40px; text-align: center; font-style: italic; font-size: 11px; color: #555; white-space: pre-line; }
         
         /* Utility for A5 vs A4 scaling if needed */
         ${pageSize === 'A5' ? `
@@ -54,9 +55,9 @@ export const generateReceiptHTML = (invoice: Invoice, customer: Customer | undef
     </head>
     <body>
       <div class="header">
-        <div class="company-name">GIẢI PHÁP TÂY PHÁT & TNC</div>
-        <div>ĐC: 123 Đường ABC, Quận XYZ, TP.HCM</div>
-        <div>Hotline: 0909.123.456</div>
+        <div class="company-name">${settings.companyName}</div>
+        <div>ĐC: ${settings.companyAddress}</div>
+        <div>Hotline: ${settings.companyPhone}</div>
       </div>
       
       <div class="text-center">
@@ -109,8 +110,7 @@ export const generateReceiptHTML = (invoice: Invoice, customer: Customer | undef
       </div>
 
       <div class="footer">
-        <p>Cảm ơn quý khách đã tin tưởng và ủng hộ!</p>
-        <p>Hàng hóa mua rồi miễn đổi trả nếu không do lỗi kỹ thuật.</p>
+        ${settings.invoiceFooterNote}
       </div>
       <script>
         window.onload = function() { window.print(); }

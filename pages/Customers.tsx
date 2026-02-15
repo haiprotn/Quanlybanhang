@@ -1,12 +1,16 @@
+
 import React, { useState } from 'react';
-import { Customer } from '../types';
+import { Customer, SystemSettings } from '../types';
+import { exportToCSV } from '../utils/exportUtils';
+import { generateCustomerListHTML } from '../templates/reportTemplates';
 
 interface CustomersProps {
   customers: Customer[];
   onAddCustomer: (customer: Customer) => void;
+  systemSettings: SystemSettings;
 }
 
-const Customers: React.FC<CustomersProps> = ({ customers, onAddCustomer }) => {
+const Customers: React.FC<CustomersProps> = ({ customers, onAddCustomer, systemSettings }) => {
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCustomer, setNewCustomer] = useState({
@@ -39,6 +43,29 @@ const Customers: React.FC<CustomersProps> = ({ customers, onAddCustomer }) => {
     setNewCustomer({ name: '', phone: '', address: '' });
   };
 
+  const handleExportExcel = () => {
+      const data = filteredCustomers.map(c => ({
+          TenKhachHang: c.name,
+          SDT: c.phone,
+          DiaChi: c.address,
+          TongNo: c.totalDebt
+      }));
+      exportToCSV(
+          data,
+          ['Tên Khách Hàng', 'Số Điện Thoại', 'Địa Chỉ', 'Tổng Nợ'],
+          ['TenKhachHang', 'SDT', 'DiaChi', 'TongNo'],
+          'Danh_Sach_Khach_Hang'
+      );
+  }
+
+  const handlePrintList = () => {
+      const w = window.open('', '_blank');
+      if(w) {
+          w.document.write(generateCustomerListHTML(filteredCustomers, systemSettings));
+          w.document.close();
+      }
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
@@ -46,13 +73,27 @@ const Customers: React.FC<CustomersProps> = ({ customers, onAddCustomer }) => {
           <h1 className="text-2xl font-bold text-slate-800">Quản lý Khách hàng</h1>
           <p className="text-slate-500 text-sm">Danh sách khách hàng và lịch sử giao dịch</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm"
-        >
-          <span className="material-icons-round">person_add</span>
-          Thêm khách hàng
-        </button>
+        <div className="flex gap-2">
+             <button 
+                onClick={handleExportExcel}
+                className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm hover:bg-slate-50 transition-colors"
+            >
+                <span className="material-icons-round">file_download</span> Xuất Excel
+            </button>
+            <button 
+                onClick={handlePrintList}
+                className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm hover:bg-slate-50 transition-colors"
+            >
+                <span className="material-icons-round">print</span> In Danh Sách
+            </button>
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm"
+            >
+              <span className="material-icons-round">person_add</span>
+              Thêm khách hàng
+            </button>
+        </div>
       </div>
 
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">

@@ -9,13 +9,47 @@ export enum ProductType {
   SERVICE = 'Dịch vụ sửa chữa',
 }
 
-export type Role = 'ADMIN' | 'TECHNICIAN' | 'SALES';
+// Mở rộng thêm các vai trò phổ biến
+export type Role = 'ADMIN' | 'TECHNICIAN' | 'SALES' | 'ACCOUNTANT' | 'WAREHOUSE';
+
+// Định nghĩa danh sách các quyền hạn trong hệ thống
+export type Permission = 
+    | 'VIEW_DASHBOARD'
+    | 'VIEW_POS'
+    | 'VIEW_REPAIR_TICKETS'
+    | 'VIEW_INVENTORY'
+    | 'VIEW_IMPORT_GOODS'
+    | 'VIEW_STOCK_REPORT'
+    | 'VIEW_DEBT'
+    | 'VIEW_VAT_INVOICES'
+    | 'VIEW_CUSTOMERS'
+    | 'VIEW_SUPPLIERS'
+    | 'VIEW_EMPLOYEES'
+    | 'VIEW_SETTINGS'
+    | 'ACTION_DELETE_DATA' // Quyền xóa dữ liệu nhạy cảm
+    | 'ACTION_EDIT_PRICE'; // Quyền sửa giá
+
+export interface RoleDefinition {
+    code: Role;
+    name: string;
+    permissions: Permission[];
+    description?: string;
+}
+
+export interface SystemSettings {
+    companyName: string;
+    companyAddress: string;
+    companyPhone: string;
+    invoiceFooterNote: string; // Lời chào cuối hóa đơn bán lẻ
+    repairTicketFooterNote: string; // Ghi chú cuối phiếu tiếp nhận
+}
 
 export interface Employee {
   id: string;
   name: string;
   role: Role;
-  username: string; // For display/login simulation
+  username: string; 
+  password?: string; 
 }
 
 export interface Product {
@@ -25,7 +59,7 @@ export interface Product {
   type: ProductType;
   price: number;
   costPrice: number;
-  stock: Record<Warehouse, number>; // Inventory per warehouse
+  stock: Record<Warehouse, number>; 
   unit: string;
 }
 
@@ -43,7 +77,7 @@ export interface Supplier {
   phone: string;
   address?: string;
   contactPerson?: string;
-  totalDebtToSupplier: number; // Tiền mình nợ NCC
+  totalDebtToSupplier: number; 
 }
 
 export interface PurchaseOrder {
@@ -59,7 +93,7 @@ export interface PurchaseOrder {
     importPrice: number;
   }[];
   totalAmount: number;
-  paidAmount: number; // Số tiền mình trả NCC
+  paidAmount: number; 
   status: 'COMPLETED' | 'PENDING';
 }
 
@@ -76,10 +110,10 @@ export interface DeviceInfo {
   model?: string;
   serial?: string;
   password?: string;
-  symptoms: string; // Tình trạng khách báo
-  diagnosis?: string; // Kỹ thuật chẩn đoán bệnh
-  accessories?: string; // phu kien kem theo
-  appearance?: string; // Tình trạng ngoại quan (trầy xước, móp...)
+  symptoms: string; 
+  diagnosis?: string; 
+  accessories?: string; 
+  appearance?: string; 
 }
 
 export interface Invoice {
@@ -94,14 +128,12 @@ export interface Invoice {
   status: 'PAID' | 'PARTIAL' | 'UNPAID' | 'CANCELLED';
   invoiceType: 'SALE' | 'REPAIR'; 
   
-  // Updated Workflow: 
-  // RECEIVED (Tiếp nhận) -> CHECKING (Kiểm tra) -> QUOTING (Báo giá) -> WAITING_PARTS (Chờ đồ) -> IN_PROGRESS (Đang sửa) -> COMPLETED (Xong) -> DELIVERED (Đã trả)
   repairStatus?: 'RECEIVED' | 'CHECKING' | 'QUOTING' | 'WAITING_PARTS' | 'IN_PROGRESS' | 'COMPLETED' | 'DELIVERED' | 'CANCELLED'; 
   
-  note?: string; // Ghi chú chung / Ghi chú nội bộ
+  note?: string; 
   deviceInfo?: DeviceInfo; 
-  technicianId?: string; // Kỹ thuật phụ trách
-  salesId?: string; // Sale phụ trách
+  technicianId?: string; 
+  salesId?: string; 
 }
 
 export interface VATInvoiceItem {
@@ -114,23 +146,18 @@ export interface VATInvoiceItem {
 
 export interface VATInvoice {
     id: string;
-    invoiceNumber: string; // Số hóa đơn đỏ
+    invoiceNumber: string; 
     date: string;
-    partnerName: string; // Tên công ty mua/bán
-    taxCode: string; // Mã số thuế
-    
-    // Updated: Detailed items instead of simple description
+    partnerName: string; 
+    taxCode: string; 
     items: VATInvoiceItem[];
-    
     totalBeforeTax: number;
-    taxRate: number; // 8% or 10%
+    taxRate: number; 
     taxAmount: number;
     totalAmount: number;
-    type: 'IN' | 'OUT'; // Đầu vào (Mua) hoặc Đầu ra (Bán)
-    
-    warehouse: Warehouse; // Hóa đơn này thuộc về công ty nào (TNC hay Tây Phát)
-
-    status: 'PENDING' | 'SYNCED'; // SYNCED means items are imported to inventory
+    type: 'IN' | 'OUT'; 
+    warehouse: Warehouse; 
+    status: 'PENDING' | 'SYNCED'; 
 }
 
-export type PageView = 'DASHBOARD' | 'POS' | 'INVENTORY' | 'DEBT' | 'CUSTOMERS' | 'REPAIR_TICKETS' | 'EMPLOYEES' | 'SUPPLIERS' | 'IMPORT_GOODS' | 'VAT_INVOICES' | 'STOCK_REPORT';
+export type PageView = 'DASHBOARD' | 'POS' | 'INVENTORY' | 'DEBT' | 'CUSTOMERS' | 'REPAIR_TICKETS' | 'EMPLOYEES' | 'SUPPLIERS' | 'IMPORT_GOODS' | 'VAT_INVOICES' | 'STOCK_REPORT' | 'SETTINGS';

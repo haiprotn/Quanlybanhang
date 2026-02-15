@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Customer, Product, ProductType, Warehouse, Invoice } from '../types';
+import { Customer, Product, ProductType, Warehouse, Invoice, SystemSettings } from '../types';
 import { generateReceiptHTML } from '../templates/receiptTemplate';
 
 interface POSProps {
@@ -8,6 +8,7 @@ interface POSProps {
   customers: Customer[];
   onAddInvoice: (invoice: Invoice) => void;
   onAddCustomer: (customer: Customer) => void;
+  systemSettings: SystemSettings;
 }
 
 interface CartItem {
@@ -16,7 +17,7 @@ interface CartItem {
     customPrice: number; 
 }
 
-const POS: React.FC<POSProps> = ({ products, customers, onAddInvoice, onAddCustomer }) => {
+const POS: React.FC<POSProps> = ({ products, customers, onAddInvoice, onAddCustomer, systemSettings }) => {
   // Only Sales Mode now
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse>(Warehouse.TAY_PHAT);
@@ -98,7 +99,7 @@ const POS: React.FC<POSProps> = ({ products, customers, onAddInvoice, onAddCusto
     onAddInvoice(newInvoice);
     const printWindow = window.open('', '_blank');
     if (printWindow) {
-        printWindow.document.write(generateReceiptHTML(newInvoice, customer));
+        printWindow.document.write(generateReceiptHTML(newInvoice, customer, systemSettings));
         printWindow.document.close();
     }
     setCart([]);

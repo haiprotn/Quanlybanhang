@@ -14,15 +14,15 @@ const Login: React.FC<LoginProps> = ({ employees, onLogin }) => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple mock authentication
+    
+    // Find user by username
     const user = employees.find(emp => emp.username === username);
     
-    // In a real app, check password hash. Here we just accept any password for demo if user exists
-    // Or simulate a specific password like '123'
-    if (user && password === '123') {
+    // Check password matches the user's password
+    if (user && user.password === password) {
       onLogin(user);
     } else {
-      setError('Tên đăng nhập hoặc mật khẩu không đúng (Mặc định: 123)');
+      setError('Tên đăng nhập hoặc mật khẩu không đúng');
     }
   };
 
@@ -46,7 +46,7 @@ const Login: React.FC<LoginProps> = ({ employees, onLogin }) => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                placeholder="admin, sales, tech..."
+                placeholder="Nhập tên đăng nhập..."
               />
             </div>
             <div>
@@ -56,11 +56,11 @@ const Login: React.FC<LoginProps> = ({ employees, onLogin }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                placeholder="••••••"
+                placeholder="Nhập mật khẩu..."
               />
             </div>
             
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {error && <p className="text-red-500 text-sm text-center bg-red-50 p-2 rounded">{error}</p>}
 
             <button 
               type="submit"
@@ -70,9 +70,13 @@ const Login: React.FC<LoginProps> = ({ employees, onLogin }) => {
             </button>
           </form>
           
-          <div className="mt-8 text-center">
-            <p className="text-xs text-slate-400">Tài khoản demo: admin / sales / tech</p>
-            <p className="text-xs text-slate-400">Mật khẩu: 123</p>
+          <div className="mt-8 text-center pt-4 border-t border-slate-100">
+            <p className="text-xs text-slate-400 font-bold mb-2">TÀI KHOẢN MẪU:</p>
+            <div className="flex justify-center gap-4 text-xs text-slate-500">
+                <span>admin / 123</span>
+                <span>sales / 123</span>
+                <span>tech / 123</span>
+            </div>
           </div>
         </div>
       </div>

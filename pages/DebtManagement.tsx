@@ -1,13 +1,17 @@
+
 import React, { useState } from 'react';
-import { Customer, Invoice } from '../types';
+import { Customer, Invoice, SystemSettings } from '../types';
 import { generateDebtReport } from '../services/geminiService';
+import { exportToCSV } from '../utils/exportUtils';
+import { generateDetailedDebtHTML } from '../templates/reportTemplates';
 
 interface DebtManagementProps {
   customers: Customer[];
   invoices: Invoice[];
+  systemSettings: SystemSettings;
 }
 
-const DebtManagement: React.FC<DebtManagementProps> = ({ customers, invoices }) => {
+const DebtManagement: React.FC<DebtManagementProps> = ({ customers, invoices, systemSettings }) => {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<string>('');
   const [analyzing, setAnalyzing] = useState(false);
@@ -46,6 +50,30 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ customers, invoices }) 
       setPaymentAmount(0);
   }
 
+  const handlePrintDetailedReport = () => {
+      if(!selectedCustomer) return;
+      const w = window.open('', '_blank');
+      if(w) {
+          w.document.write(generateDetailedDebtHTML(selectedCustomer, invoices, systemSettings));
+          w.document.close();
+      }
+  };
+
+  const handleExportCustomerList = () => {
+      const data = customers.map(c => ({
+          TenKhachHang: c.name,
+          SDT: c.phone,
+          DiaChi: c.address,
+          TongNo: c.totalDebt
+      }));
+      exportToCSV(
+          data, 
+          ['Tên Khách Hàng', 'Điện Thoại', 'Địa Chỉ', 'Tổng Nợ'],
+          ['TenKhachHang', 'SDT', 'DiaChi', 'TongNo'],
+          'Danh_Sach_Cong_No_Khach_Hang'
+      );
+  }
+
   return (
     <div className="h-[calc(100vh-2rem)] flex flex-col gap-6 animate-fade-in">
         {/* Debt Dashboard */}
@@ -55,6 +83,9 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ customers, invoices }) 
                 <p className="text-slate-500 text-sm">Theo dõi thu nợ và dòng tiền</p>
              </div>
              <div className="flex gap-4">
+                 <button onClick={handleExportCustomerList} className="bg-white border border-slate-300 text-slate-700 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm hover:bg-slate-50 transition-colors">
+                     <span className="material-icons-round">file_download</span> Xuất DS Công Nợ
+                 </button>
                  <div className="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3">
                      <div className="p-2 bg-red-50 rounded-full text-red-600">
                          <span className="material-icons-round">trending_down</span>
@@ -62,15 +93,6 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ customers, invoices }) 
                      <div>
                          <p className="text-xs text-slate-500 font-medium">Tổng phải thu</p>
                          <p className="text-lg font-bold text-red-600">{totalReceivables.toLocaleString()} ₫</p>
-                     </div>
-                 </div>
-                 <div className="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3">
-                     <div className="p-2 bg-orange-50 rounded-full text-orange-600">
-                         <span className="material-icons-round">people</span>
-                     </div>
-                     <div>
-                         <p className="text-xs text-slate-500 font-medium">Khách đang nợ</p>
-                         <p className="text-lg font-bold text-slate-800">{totalCustomersWithDebt}</p>
                      </div>
                  </div>
              </div>
@@ -138,6 +160,13 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ customers, invoices }) 
                              >
                                  <span className="material-icons-round text-lg">payments</span>
                                  Lập phiếu thu
+                             </button>
+                             <button 
+                                onClick={handlePrintDetailedReport}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm transition-colors"
+                             >
+                                 <span className="material-icons-round text-lg">print</span>
+                                 In Đối Chiếu
                              </button>
                              <button 
                                 onClick={() => copyReminder(selectedCustomer)}

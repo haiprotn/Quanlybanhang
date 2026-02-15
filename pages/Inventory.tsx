@@ -1,12 +1,15 @@
+
 import React, { useState } from 'react';
-import { Product, ProductType, Warehouse } from '../types';
+import { Product, ProductType, Warehouse, SystemSettings } from '../types';
+import { exportToCSV } from '../utils/exportUtils';
 
 interface InventoryProps {
   products: Product[];
   onAddProduct: (product: Product) => void;
+  systemSettings: SystemSettings;
 }
 
-const Inventory: React.FC<InventoryProps> = ({ products, onAddProduct }) => {
+const Inventory: React.FC<InventoryProps> = ({ products, onAddProduct, systemSettings }) => {
   const [filterType, setFilterType] = useState<'ALL' | ProductType>('ALL');
   const [selectedWarehouse, setSelectedWarehouse] = useState<'ALL' | Warehouse>('ALL');
   const [search, setSearch] = useState('');
@@ -51,6 +54,26 @@ const Inventory: React.FC<InventoryProps> = ({ products, onAddProduct }) => {
     const matchesType = filterType === 'ALL' || p.type === filterType;
     return matchesSearch && matchesType;
   });
+
+  const handleExportExcel = () => {
+    const dataToExport = filteredProducts.map(p => ({
+        SKU: p.sku,
+        TenSanPham: p.name,
+        Loai: p.type,
+        DVT: p.unit,
+        GiaVon: p.costPrice,
+        GiaBan: p.price,
+        TonKhoTayPhat: p.stock[Warehouse.TAY_PHAT],
+        TonKhoTNC: p.stock[Warehouse.TNC]
+    }));
+    
+    exportToCSV(
+        dataToExport, 
+        ['Mã SKU', 'Tên Sản Phẩm', 'Loại', 'ĐVT', 'Giá Vốn', 'Giá Bán', 'Tồn Tây Phát', 'Tồn TNC'],
+        ['SKU', 'TenSanPham', 'Loai', 'DVT', 'GiaVon', 'GiaBan', 'TonKhoTayPhat', 'TonKhoTNC'],
+        'Danh_Sach_San_Pham'
+    );
+  };
 
   const handleSaveProduct = () => {
     if (!newProduct.name || !newProduct.sku) {
@@ -107,7 +130,10 @@ const Inventory: React.FC<InventoryProps> = ({ products, onAddProduct }) => {
                 <span className="material-icons-round text-lg">add</span>
                 Thêm mới
             </button>
-            <button className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors shadow-sm">
+            <button 
+                onClick={handleExportExcel}
+                className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors shadow-sm"
+            >
                 <span className="material-icons-round text-lg">file_download</span>
                 Xuất Excel
             </button>

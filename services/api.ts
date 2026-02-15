@@ -1,129 +1,100 @@
 
 import { Employee, Product, Customer, Invoice, Supplier, Warehouse } from '../types';
+import { MOCK_EMPLOYEES, MOCK_PRODUCTS, MOCK_CUSTOMERS, MOCK_INVOICES, MOCK_SUPPLIERS } from '../constants';
 
-// Hàm gọi API nội bộ
-const fetchJson = async (url: string, options?: RequestInit) => {
-    try {
-        const res = await fetch(`/api${url}`, options);
-        if (!res.ok) {
-            throw new Error(`API Error: ${res.status} ${res.statusText}`);
-        }
-        return await res.json();
-    } catch (error) {
-        console.error(`Fetch error for ${url}:`, error);
-        throw error;
-    }
-};
+// --- IN-MEMORY DATA STORE (SIMULATING DATABASE) ---
+// Data will persist only until page refresh
+let employees = [...MOCK_EMPLOYEES];
+let products = [...MOCK_PRODUCTS];
+let customers = [...MOCK_CUSTOMERS];
+let invoices = [...MOCK_INVOICES];
+let suppliers = [...MOCK_SUPPLIERS];
+
+// Helper to simulate network delay
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const api = {
     // --- EMPLOYEES ---
     getEmployees: async (): Promise<Employee[]> => {
-        try {
-            return await fetchJson('/employees');
-        } catch (e) { return []; }
+        await delay(300);
+        return [...employees];
     },
     
     addEmployee: async (emp: Employee) => {
-        try {
-            return await fetchJson('/employees', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(emp)
-            });
-        } catch (e) { return { success: false }; }
+        await delay(300);
+        employees = [emp, ...employees];
+        return { success: true };
     },
 
     deleteEmployee: async (id: string) => {
-        try {
-            return await fetchJson(`/employees/${id}`, { method: 'DELETE' });
-        } catch (e) { return { success: false }; }
+        await delay(300);
+        employees = employees.filter(e => e.id !== id);
+        return { success: true };
     },
 
     // --- PRODUCTS ---
     getProducts: async (): Promise<Product[]> => {
-        try {
-            return await fetchJson('/products');
-        } catch (e) { return []; }
+        await delay(300);
+        return [...products];
     },
 
     addProduct: async (prod: Product) => {
-        try {
-            return await fetchJson('/products', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(prod)
-            });
-        } catch (e) { return { success: false }; }
+        await delay(300);
+        // Check if exists to update or add
+        const idx = products.findIndex(p => p.id === prod.id);
+        if (idx >= 0) {
+            products[idx] = prod;
+        } else {
+            products = [prod, ...products];
+        }
+        return { success: true };
     },
 
     // --- CUSTOMERS ---
     getCustomers: async (): Promise<Customer[]> => {
-        try {
-            return await fetchJson('/customers');
-        } catch (e) { return []; }
+        await delay(300);
+        return [...customers];
     },
 
     addCustomer: async (cust: Customer) => {
-        try {
-            return await fetchJson('/customers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(cust)
-            });
-        } catch (e) { return { success: false }; }
+        await delay(300);
+        customers = [cust, ...customers];
+        return { success: true };
     },
 
     updateCustomer: async (cust: Customer) => {
-        try {
-            return await fetchJson(`/customers/${cust.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(cust)
-            });
-        } catch (e) { return { success: false }; }
+        await delay(300);
+        customers = customers.map(c => c.id === cust.id ? cust : c);
+        return { success: true };
     },
 
     // --- INVOICES ---
     getInvoices: async (): Promise<Invoice[]> => {
-        try {
-            return await fetchJson('/invoices');
-        } catch (e) { return []; }
+        await delay(300);
+        return [...invoices];
     },
 
     addInvoice: async (inv: Invoice) => {
-        try {
-            return await fetchJson('/invoices', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(inv)
-            });
-        } catch (e) { return { success: false }; }
+        await delay(300);
+        invoices = [inv, ...invoices];
+        return { success: true };
     },
 
     updateInvoice: async (inv: Invoice) => {
-        try {
-            return await fetchJson(`/invoices/${inv.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(inv)
-            });
-        } catch (e) { return { success: false }; }
+        await delay(300);
+        invoices = invoices.map(i => i.id === inv.id ? inv : i);
+        return { success: true };
     },
 
     // --- SUPPLIERS ---
     getSuppliers: async (): Promise<Supplier[]> => {
-        try {
-            return await fetchJson('/suppliers');
-        } catch (e) { return []; }
+        await delay(300);
+        return [...suppliers];
     },
 
     addSupplier: async (sup: Supplier) => {
-        try {
-            return await fetchJson('/suppliers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(sup)
-            });
-        } catch (e) { return { success: false }; }
+        await delay(300);
+        suppliers = [sup, ...suppliers];
+        return { success: true };
     }
 };

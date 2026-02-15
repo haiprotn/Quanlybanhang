@@ -44,11 +44,70 @@ export const MOCK_PRODUCTS: Product[] = [
     costPrice: 20000,
     stock: { [Warehouse.TAY_PHAT]: 50, [Warehouse.TNC]: 50 },
     unit: 'Lần',
+  },
+  {
+    id: 'p1',
+    name: 'RAM DDR4 8GB Bus 3200 Kingston',
+    sku: 'RAM-D4-8G',
+    type: ProductType.GOODS,
+    price: 650000,
+    costPrice: 450000,
+    stock: { [Warehouse.TAY_PHAT]: 10, [Warehouse.TNC]: 5 },
+    unit: 'Thanh',
+  },
+  {
+    id: 'p2',
+    name: 'SSD 240GB Western Digital Green',
+    sku: 'SSD-WD-240',
+    type: ProductType.GOODS,
+    price: 550000,
+    costPrice: 380000,
+    stock: { [Warehouse.TAY_PHAT]: 8, [Warehouse.TNC]: 12 },
+    unit: 'Cái',
   }
 ];
 
-export const MOCK_CUSTOMERS: Customer[] = [];
-export const MOCK_INVOICES: Invoice[] = [];
+export const MOCK_CUSTOMERS: Customer[] = [
+    { id: 'c1', name: 'Nguyễn Văn Khách', phone: '0909111222', address: 'KP3, P.3, TP. Tây Ninh', totalDebt: 0 },
+    { id: 'c2', name: 'Công ty TNHH ABC', phone: '02763888999', address: 'Khu CN Trảng Bàng', totalDebt: 2500000 },
+];
+
+export const MOCK_INVOICES: Invoice[] = [
+    {
+        id: 'INV-DEMO-01',
+        customerId: 'c1',
+        customerName: 'Nguyễn Văn Khách',
+        date: new Date().toISOString(),
+        items: [
+            { productId: 's1', productName: 'Dịch vụ Cài Win + Vệ sinh máy', quantity: 1, price: 150000, type: ProductType.SERVICE }
+        ],
+        totalAmount: 150000,
+        paidAmount: 150000,
+        warehouse: Warehouse.TAY_PHAT,
+        status: 'PAID',
+        invoiceType: 'SALE'
+    },
+    {
+        id: 'REP-DEMO-02',
+        customerId: 'c2',
+        customerName: 'Công ty TNHH ABC',
+        date: new Date(Date.now() - 86400000).toISOString(), // Yesterday
+        items: [],
+        totalAmount: 0,
+        paidAmount: 0,
+        warehouse: Warehouse.TNC,
+        status: 'UNPAID',
+        invoiceType: 'REPAIR',
+        repairStatus: 'CHECKING',
+        deviceInfo: {
+            deviceName: 'PC Văn Phòng Dell Vostro',
+            symptoms: 'Máy chạy chậm, hay bị màn hình xanh',
+            password: '',
+            accessories: 'Chỉ máy'
+        },
+        note: 'Đã nhận máy, đang test RAM'
+    }
+];
 
 // Cấu hình phân quyền mặc định
 export const DEFAULT_ROLE_DEFINITIONS: RoleDefinition[] = [

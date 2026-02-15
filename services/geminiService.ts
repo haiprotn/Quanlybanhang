@@ -94,11 +94,11 @@ const invoiceSchema = {
         taxRate: { type: Type.NUMBER },
         type: { 
             type: Type.STRING, 
-            description: "Invoice type: 'IN' (Input/Purchase) or 'OUT' (Output/Sale)." 
+            description: "Invoice type: 'IN' (Input/Purchase) or 'OUT' (Output/Sale). Derived from buyer/seller context." 
         },
         internalCompany: {
             type: Type.STRING,
-            description: "Values: 'TNC' or 'TAY_PHAT'. Indicates which of my companies is involved."
+            description: "Values: 'TNC' or 'TAY_PHAT'. Indicates which of my companies is the participant in the invoice."
         },
         items: {
             type: Type.ARRAY,
@@ -118,34 +118,31 @@ const invoiceSchema = {
 
 const MY_COMPANIES_CONTEXT = `
 MY COMPANIES (The "Home" entities):
-1. "CÔNG TY CỔ PHẦN MÁY TÍNH - THIẾT BỊ TRƯỜNG HỌC TÂY NINH" (Matches: TNC, Máy Tính Tây Ninh, Trường Học Tây Ninh)
-2. "CÔNG TY TNHH THIẾT BỊ GIẢI PHÁP TÂY PHÁT" (Matches: Tây Phát, Giải Pháp Tây Phát)
+1. "CÔNG TY CỔ PHẦN MÁY TÍNH - THIẾT BỊ TRƯỜNG HỌC TÂY NINH" (Matches: TNC, Máy Tính Tây Ninh, Trường Học Tây Ninh, Công Ty Cổ Phần Máy Tính - Thiết Bị Trường Học Tây Ninh). Internal Code: TNC.
+2. "CÔNG TY TNHH THIẾT BỊ GIẢI PHÁP TÂY PHÁT" (Matches: Tây Phát, Giải Pháp Tây Phát, Công Ty TNHH Thiết Bị Giải Pháp Tây Phát). Internal Code: TAY_PHAT.
 `;
 
 // AI Parser for VAT Invoice from Text (PDF extracted text)
 export const parseInvoiceFromText = async (text: string) => {
     try {
         const prompt = `
-            Extract invoice information from the provided text.
+            You are an expert VAT invoice parser. Extract invoice information from the provided text.
             ${MY_COMPANIES_CONTEXT}
             
-            Determine the 'type' of invoice based on who is the SELLER and who is the BUYER:
-            - **OUT** (Output/Sale): If the SELLER (Người bán) is one of MY COMPANIES.
-            - **IN** (Input/Purchase): If the BUYER (Người mua) is one of MY COMPANIES.
-            
-            Determine 'internalCompany':
-            - If found "THIẾT BỊ TRƯỜNG HỌC TÂY NINH" or "TNC", internalCompany = 'TNC'.
-            - If found "GIẢI PHÁP TÂY PHÁT" or "TÂY PHÁT", internalCompany = 'TAY_PHAT'.
-            - Use the company that appears in the context of 'My Company' (Seller for OUT, Buyer for IN).
+            Tasks:
+            1. Identify the SELLER and the BUYER.
+            2. Determine 'type':
+               - 'OUT' (Output/Sale): If the SELLER matches one of MY COMPANIES (TNC or TAY_PHAT).
+               - 'IN' (Input/Purchase): If the BUYER matches one of MY COMPANIES (TNC or TAY_PHAT).
+            3. Determine 'internalCompany':
+               - If the participating My Company is related to "CÔNG TY CỔ PHẦN MÁY TÍNH - THIẾT BỊ TRƯỜNG HỌC TÂY NINH", set 'TNC'.
+               - If the participating My Company is related to "CÔNG TY TNHH THIẾT BỊ GIẢI PHÁP TÂY PHÁT", set 'TAY_PHAT'.
+               - If 'type' is OUT, check the Seller. If 'type' is IN, check the Buyer.
+            4. Extract 'partnerName': The name of the other entity (the one that is NOT My Company).
+            5. Extract 'taxCode': The tax code of the PARTNER.
+            6. Extract 'invoiceNumber', 'date' (YYYY-MM-DD), 'taxRate' (e.g. 8, 10).
+            7. Extract line items.
 
-            Extract:
-            - invoiceNumber (Số hóa đơn)
-            - date (YYYY-MM-DD)
-            - partnerName: The OTHER company (Not my company).
-            - taxCode: Tax code of the PARTNER.
-            - taxRate: VAT tax rate.
-            - items: List of products.
-            
             Text to parse: "${text}"
             
             Return JSON matching the schema.
@@ -174,9 +171,12 @@ export const parseInvoiceFromImage = async (base64Data: string, mimeType: string
             Analyze this invoice image. 
             ${MY_COMPANIES_CONTEXT}
             
-            Determine the 'type' (IN/OUT) and 'internalCompany' (TNC/TAY_PHAT).
+            Tasks:
+            1. Identify SELLER and BUYER.
+            2. Determine 'type' (IN/OUT) based on whether My Company is Buyer (IN) or Seller (OUT).
+            3. Determine 'internalCompany' (TNC or TAY_PHAT) based on the name of My Company found in the invoice.
+            4. Extract invoiceNumber, date, partnerName (the other party), taxCode (of partner), items, taxRate.
             
-            Extract: invoiceNumber, date, partnerName (The other party), taxCode (of partner), items, taxRate.
             Return in JSON format.
         `;
         

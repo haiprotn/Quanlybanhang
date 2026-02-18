@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RoleDefinition, Permission, SystemSettings } from '../types';
+import { validateConnection } from '../services/geminiService';
 
 interface SettingsProps {
     roleDefinitions: RoleDefinition[];
@@ -26,10 +27,43 @@ const ALL_PERMISSIONS: { code: Permission; label: string; group: string }[] = [
     { code: 'ACTION_EDIT_PRICE', label: 'Sửa giá bán', group: 'Bán hàng' },
 ];
 
-type SettingsTab = 'GENERAL' | 'PERMISSIONS' | 'PRINT_TEMPLATES';
+type SettingsTab = 'GENERAL' | 'PERMISSIONS' | 'PRINT_TEMPLATES' | 'AI_CONNECTION';
 
 const Settings: React.FC<SettingsProps> = ({ roleDefinitions, onUpdateRoleDefinition, systemSettings, onUpdateSystemSettings }) => {
     const [activeTab, setActiveTab] = useState<SettingsTab>('GENERAL');
+    
+    // AI Connection State
+    const [apiKey, setApiKey] = useState('');
+    const [checkStatus, setCheckStatus] = useState<'IDLE' | 'CHECKING' | 'SUCCESS' | 'ERROR'>('IDLE');
+    const [statusMessage, setStatusMessage] = useState('');
+
+    useEffect(() => {
+        const storedKey = localStorage.getItem('GEMINI_API_KEY');
+        if (storedKey) setApiKey(storedKey);
+    }, []);
+
+    const handleSaveKey = () => {
+        localStorage.setItem('GEMINI_API_KEY', apiKey.trim());
+        setCheckStatus('IDLE');
+        setStatusMessage('Đã lưu Key (chưa kiểm tra).');
+    };
+
+    const handleCheckConnection = async () => {
+        if (!apiKey.trim()) {
+            setStatusMessage("Vui lòng nhập API Key.");
+            return;
+        }
+        setCheckStatus('CHECKING');
+        const result = await validateConnection(apiKey.trim());
+        if (result.success) {
+            setCheckStatus('SUCCESS');
+            setStatusMessage("Kết nối thành công! AI đã sẵn sàng hoạt động.");
+            localStorage.setItem('GEMINI_API_KEY', apiKey.trim());
+        } else {
+            setCheckStatus('ERROR');
+            setStatusMessage("Kết nối thất bại: " + result.message);
+        }
+    };
 
     // --- Permissions Logic ---
     const handleTogglePermission = (roleCode: string, permission: Permission) => {
@@ -73,6 +107,12 @@ const Settings: React.FC<SettingsProps> = ({ roleDefinitions, onUpdateRoleDefini
                         className={`text-left px-6 py-4 border-b border-slate-100 flex items-center gap-3 transition-colors ${activeTab === 'GENERAL' ? 'bg-indigo-50 text-indigo-700 font-bold border-l-4 border-l-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
                     >
                         <span className="material-icons-round">store</span> Thông tin Cửa hàng
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('AI_CONNECTION')}
+                        className={`text-left px-6 py-4 border-b border-slate-100 flex items-center gap-3 transition-colors ${activeTab === 'AI_CONNECTION' ? 'bg-indigo-50 text-indigo-700 font-bold border-l-4 border-l-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                    >
+                        <span className="material-icons-round">psychology</span> Kết nối AI (Google)
                     </button>
                     <button 
                         onClick={() => setActiveTab('PRINT_TEMPLATES')}
@@ -124,6 +164,73 @@ const Settings: React.FC<SettingsProps> = ({ roleDefinitions, onUpdateRoleDefini
                                 <button className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg shadow hover:bg-indigo-700 transition-colors">
                                     Lưu Thay Đổi
                                 </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TAB: AI CONNECTION */}
+                    {activeTab === 'AI_CONNECTION' && (
+                        <div className="space-y-6 max-w-2xl">
+                            <h3 className="font-bold text-lg text-slate-800 border-b border-slate-100 pb-2 mb-4">Cấu hình Google Gemini AI</h3>
+                            
+                            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 text-sm text-indigo-800 mb-4">
+                                <p className="flex items-center gap-2 font-bold mb-1"><span className="material-icons-round text-base">info</span> Lưu ý:</p>
+                                <p>API Key sẽ được lưu trên trình duyệt của bạn (LocalStorage) để sử dụng cho các tính năng: Đọc hóa đơn, Gợi ý tư vấn và Phân tích báo cáo.</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">Google API Key</label>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="password"
+                                        className="flex-1 border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none font-mono"
+                                        value={apiKey}
+                                        onChange={(e) => setApiKey(e.target.value)}
+                                        placeholder="AIzaSy..."
+                                    />
+                                    <button 
+                                        onClick={handleSaveKey}
+                                        className="px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-300 transition-colors"
+                                    >
+                                        Lưu
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <button 
+                                    onClick={handleCheckConnection}
+                                    disabled={checkStatus === 'CHECKING'}
+                                    className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg shadow hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    {checkStatus === 'CHECKING' ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            Đang kiểm tra...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="material-icons-round text-sm">network_check</span>
+                                            Kiểm tra Kết nối
+                                        </>
+                                    )}
+                                </button>
+
+                                {statusMessage && (
+                                    <div className={`mt-4 p-3 rounded-lg flex items-center gap-2 font-medium text-sm
+                                        ${checkStatus === 'SUCCESS' ? 'bg-green-100 text-green-700' : 
+                                          checkStatus === 'ERROR' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}
+                                    `}>
+                                        <span className="material-icons-round text-lg">
+                                            {checkStatus === 'SUCCESS' ? 'check_circle' : checkStatus === 'ERROR' ? 'error' : 'info'}
+                                        </span>
+                                        {statusMessage}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="pt-4 text-xs text-slate-400">
+                                <p>Chưa có API Key? <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-600 underline">Tạo miễn phí tại Google AI Studio</a></p>
                             </div>
                         </div>
                     )}
@@ -233,9 +340,6 @@ const Settings: React.FC<SettingsProps> = ({ roleDefinitions, onUpdateRoleDefini
                                     ))}
                                 </tbody>
                             </table>
-                            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-700">
-                                <strong>Lưu ý:</strong> Quản trị viên (ADMIN) luôn có quyền truy cập vào trang Cài đặt để tránh bị khóa khỏi hệ thống.
-                            </div>
                         </div>
                     )}
                 </div>

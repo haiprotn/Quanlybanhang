@@ -2,118 +2,110 @@
 import { Customer, Invoice, Product, ProductType, Warehouse, Employee, Supplier, RoleDefinition, SystemSettings } from './types';
 
 export const MOCK_EMPLOYEES: Employee[] = [
-  { id: 'emp1', name: 'Nguyễn Văn Quản Lý', role: 'ADMIN', username: 'admin', password: '123' },
-  { id: 'emp2', name: 'Trần Kỹ Thuật', role: 'TECHNICIAN', username: 'tech', password: '123' },
-  { id: 'emp3', name: 'Lê Bán Hàng', role: 'SALES', username: 'sales', password: '123' },
+  { id: 'emp1', name: 'Nguyễn Quản Lý', role: 'ADMIN', username: 'admin', password: '123' },
+  { id: 'emp2', name: 'Trần Tư Vấn', role: 'SALES', username: 'sales', password: '123' },
+  { id: 'emp3', name: 'Lê Kho Vận', role: 'WAREHOUSE', username: 'kho', password: '123' },
   { id: 'emp4', name: 'Phạm Kế Toán', role: 'ACCOUNTANT', username: 'ketoan', password: '123' },
-  { id: 'emp5', name: 'Võ Thủ Kho', role: 'WAREHOUSE', username: 'kho', password: '123' },
 ];
 
 export const MOCK_SUPPLIERS: Supplier[] = [
-    { id: 'sup1', name: 'Linh Kiện Lê Nam', phone: '0901234567', contactPerson: 'A. Nam', totalDebtToSupplier: 0 },
-    { id: 'sup2', name: 'Kho Sỉ Minh Thông', phone: '0987654321', contactPerson: 'C. Thảo', totalDebtToSupplier: 5000000 },
+    { id: 'sup1', name: 'Công Ty CP Sữa Việt Nam (Vinamilk)', phone: '1900 636 979', contactPerson: 'Đại diện KV', totalDebtToSupplier: 15000000 },
+    { id: 'sup2', name: 'NPP Sữa Ngoại Nhập', phone: '0909 999 888', contactPerson: 'Chị Lan', totalDebtToSupplier: 5000000 },
 ];
 
 export const MOCK_PRODUCTS: Product[] = [
   {
-    id: 's1',
-    name: 'Dịch vụ Cài Win + Vệ sinh máy',
-    sku: 'SV-BASIC-01',
-    type: ProductType.SERVICE,
-    price: 150000,
-    costPrice: 0,
-    stock: { [Warehouse.TAY_PHAT]: 9999, [Warehouse.TNC]: 9999 },
-    unit: 'Lần',
-  },
-  {
-    id: 's2',
-    name: 'Kiểm tra lỗi phần cứng (Phí dịch vụ)',
-    sku: 'SV-CHECK-01',
-    type: ProductType.SERVICE,
-    price: 100000,
-    costPrice: 0,
-    stock: { [Warehouse.TAY_PHAT]: 9999, [Warehouse.TNC]: 9999 },
-    unit: 'Lần',
-  },
-  {
-    id: 's3',
-    name: 'Thay Keo tản nhiệt MX4',
-    sku: 'SV-THERMAL',
-    type: ProductType.GOODS,
-    price: 50000,
-    costPrice: 20000,
-    stock: { [Warehouse.TAY_PHAT]: 50, [Warehouse.TNC]: 50 },
-    unit: 'Lần',
-  },
-  {
     id: 'p1',
-    name: 'RAM DDR4 8GB Bus 3200 Kingston',
-    sku: 'RAM-D4-8G',
+    name: 'Sữa bột Vinamilk Dielac Alpha Gold 4 (900g)',
+    sku: 'VNM-DA4-900',
     type: ProductType.GOODS,
-    price: 650000,
-    costPrice: 450000,
-    stock: { [Warehouse.TAY_PHAT]: 10, [Warehouse.TNC]: 5 },
-    unit: 'Thanh',
+    price: 250000,
+    costPrice: 210000,
+    stock: { [Warehouse.TAY_PHAT]: 50, [Warehouse.TNC]: 20 },
+    unit: 'Hộp',
   },
   {
     id: 'p2',
-    name: 'SSD 240GB Western Digital Green',
-    sku: 'SSD-WD-240',
+    name: 'Sữa tươi tiệt trùng TH true MILK ít đường 1L',
+    sku: 'TH-IT-1L',
     type: ProductType.GOODS,
-    price: 550000,
-    costPrice: 380000,
-    stock: { [Warehouse.TAY_PHAT]: 8, [Warehouse.TNC]: 12 },
-    unit: 'Cái',
+    price: 35000,
+    costPrice: 28000,
+    stock: { [Warehouse.TAY_PHAT]: 120, [Warehouse.TNC]: 240 },
+    unit: 'Hộp',
+  },
+  {
+    id: 'p3',
+    name: 'Sữa Abbott Ensure Gold Vani (850g)',
+    sku: 'AB-ENS-850',
+    type: ProductType.GOODS,
+    price: 790000,
+    costPrice: 720000,
+    stock: { [Warehouse.TAY_PHAT]: 15, [Warehouse.TNC]: 10 },
+    unit: 'Hộp',
+  },
+  {
+    id: 'p4',
+    name: 'Tã quần Bobby Size XL (62 miếng)',
+    sku: 'BB-Quan-XL62',
+    type: ProductType.GOODS,
+    price: 320000,
+    costPrice: 280000,
+    stock: { [Warehouse.TAY_PHAT]: 30, [Warehouse.TNC]: 0 },
+    unit: 'Bịch',
+  },
+  {
+    id: 's1',
+    name: 'Dịch vụ Giao hàng tận nơi (<5km)',
+    sku: 'DV-SHIP-5',
+    type: ProductType.SERVICE,
+    price: 15000,
+    costPrice: 10000,
+    stock: { [Warehouse.TAY_PHAT]: 999, [Warehouse.TNC]: 999 },
+    unit: 'Lần',
   }
 ];
 
 export const MOCK_CUSTOMERS: Customer[] = [
-    { id: 'c1', name: 'Nguyễn Văn Khách', phone: '0909111222', address: 'KP3, P.3, TP. Tây Ninh', totalDebt: 0 },
-    { id: 'c2', name: 'Công ty TNHH ABC', phone: '02763888999', address: 'Khu CN Trảng Bàng', totalDebt: 2500000 },
+    { id: 'c1', name: 'Chị Hoa (Khách lẻ)', phone: '0901234567', address: 'P3, TP. Tây Ninh', totalDebt: 0 },
+    { id: 'c2', name: 'Trường Mầm Non Họa Mi', phone: '02763888999', address: 'P1, TP. Tây Ninh', totalDebt: 3500000 },
 ];
 
 export const MOCK_INVOICES: Invoice[] = [
     {
-        id: 'INV-DEMO-01',
+        id: 'INV-001',
         customerId: 'c1',
-        customerName: 'Nguyễn Văn Khách',
+        customerName: 'Chị Hoa (Khách lẻ)',
         date: new Date().toISOString(),
         items: [
-            { productId: 's1', productName: 'Dịch vụ Cài Win + Vệ sinh máy', quantity: 1, price: 150000, type: ProductType.SERVICE }
+            { productId: 'p1', productName: 'Sữa bột Vinamilk Dielac Alpha Gold 4 (900g)', quantity: 2, price: 250000, type: ProductType.GOODS }
         ],
-        totalAmount: 150000,
-        paidAmount: 150000,
+        totalAmount: 500000,
+        paidAmount: 500000,
         warehouse: Warehouse.TAY_PHAT,
         status: 'PAID',
         invoiceType: 'SALE'
     },
     {
-        id: 'REP-DEMO-02',
+        id: 'INV-002',
         customerId: 'c2',
-        customerName: 'Công ty TNHH ABC',
-        date: new Date(Date.now() - 86400000).toISOString(), // Yesterday
-        items: [],
-        totalAmount: 0,
+        customerName: 'Trường Mầm Non Họa Mi',
+        date: new Date(Date.now() - 86400000).toISOString(), 
+        items: [
+             { productId: 'p2', productName: 'Sữa tươi tiệt trùng TH true MILK ít đường 1L', quantity: 20, price: 35000, type: ProductType.GOODS }
+        ],
+        totalAmount: 700000,
         paidAmount: 0,
         warehouse: Warehouse.TNC,
         status: 'UNPAID',
-        invoiceType: 'REPAIR',
-        repairStatus: 'CHECKING',
-        deviceInfo: {
-            deviceName: 'PC Văn Phòng Dell Vostro',
-            symptoms: 'Máy chạy chậm, hay bị màn hình xanh',
-            password: '',
-            accessories: 'Chỉ máy'
-        },
-        note: 'Đã nhận máy, đang test RAM'
+        invoiceType: 'SALE'
     }
 ];
 
-// Cấu hình phân quyền mặc định
 export const DEFAULT_ROLE_DEFINITIONS: RoleDefinition[] = [
     {
         code: 'ADMIN',
-        name: 'Quản trị viên',
+        name: 'Quản lý Cửa hàng',
         description: 'Toàn quyền hệ thống',
         permissions: [
             'VIEW_DASHBOARD', 'VIEW_POS', 'VIEW_REPAIR_TICKETS', 'VIEW_INVENTORY', 
@@ -124,25 +116,25 @@ export const DEFAULT_ROLE_DEFINITIONS: RoleDefinition[] = [
     },
     {
         code: 'SALES',
-        name: 'Nhân viên Kinh doanh',
-        description: 'Bán hàng, xem kho, quản lý khách',
+        name: 'Nhân viên Bán hàng',
+        description: 'Bán hàng, tư vấn sữa',
         permissions: [
-            'VIEW_DASHBOARD', 'VIEW_POS', 'VIEW_REPAIR_TICKETS', 'VIEW_INVENTORY', 
-            'VIEW_STOCK_REPORT', 'VIEW_DEBT', 'VIEW_CUSTOMERS', 'VIEW_SUPPLIERS'
+            'VIEW_DASHBOARD', 'VIEW_POS', 'VIEW_INVENTORY', 
+            'VIEW_CUSTOMERS'
         ]
     },
     {
         code: 'TECHNICIAN',
-        name: 'Kỹ thuật viên',
-        description: 'Sửa chữa, xem kho linh kiện',
+        name: 'Tư vấn dinh dưỡng',
+        description: 'Tư vấn, CSKH',
         permissions: [
-            'VIEW_REPAIR_TICKETS', 'VIEW_INVENTORY'
+            'VIEW_CUSTOMERS', 'VIEW_INVENTORY'
         ]
     },
     {
         code: 'ACCOUNTANT',
         name: 'Kế toán',
-        description: 'Quản lý công nợ, hóa đơn VAT, báo cáo',
+        description: 'Công nợ, Hóa đơn VAT',
         permissions: [
             'VIEW_DASHBOARD', 'VIEW_DEBT', 'VIEW_VAT_INVOICES', 
             'VIEW_STOCK_REPORT', 'VIEW_CUSTOMERS', 'VIEW_SUPPLIERS'
@@ -151,7 +143,7 @@ export const DEFAULT_ROLE_DEFINITIONS: RoleDefinition[] = [
     {
         code: 'WAREHOUSE',
         name: 'Thủ kho',
-        description: 'Nhập hàng, quản lý tồn kho',
+        description: 'Nhập hàng, kiểm kho',
         permissions: [
             'VIEW_INVENTORY', 'VIEW_IMPORT_GOODS', 'VIEW_STOCK_REPORT', 'VIEW_SUPPLIERS'
         ]
@@ -159,9 +151,9 @@ export const DEFAULT_ROLE_DEFINITIONS: RoleDefinition[] = [
 ];
 
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
-    companyName: 'GIẢI PHÁP TÂY PHÁT & TNC',
-    companyAddress: '123 Đường ABC, Phường 1, TP. Tây Ninh',
+    companyName: 'ĐẠI LÝ SỮA TÂY PHÁT & TNC',
+    companyAddress: '123 Đường 30/4, TP. Tây Ninh',
     companyPhone: '0909.123.456',
-    invoiceFooterNote: 'Cảm ơn quý khách đã tin tưởng và ủng hộ!\nHàng hóa mua rồi miễn đổi trả nếu không do lỗi kỹ thuật.',
-    repairTicketFooterNote: '* Quý khách vui lòng giữ biên nhận để nhận máy.\n* Trung tâm không chịu trách nhiệm về dữ liệu cá nhân nếu không được yêu cầu sao lưu.'
+    invoiceFooterNote: 'Sữa mẹ là thức ăn tốt nhất cho trẻ sơ sinh và trẻ nhỏ.\nCảm ơn quý khách đã tin dùng sản phẩm!',
+    repairTicketFooterNote: 'Quý khách vui lòng kiểm tra hạn sử dụng trước khi rời quầy.'
 };

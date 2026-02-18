@@ -1,105 +1,123 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Invoice, Customer, Product } from '../types';
+import { Invoice, Customer } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Hàm lấy API Key: Ưu tiên LocalStorage (người dùng nhập), sau đó đến biến môi trường
+const getApiKey = () => {
+    const storedKey = localStorage.getItem('GEMINI_API_KEY');
+    if (storedKey && storedKey.trim() !== '') return storedKey;
+    return process.env.API_KEY || "";
+};
 
-// Using gemini-3-flash-preview for quick, efficient text analysis
+// Hàm khởi tạo client mới mỗi khi gọi để đảm bảo lấy Key mới nhất
+const getAIClient = () => {
+    const key = getApiKey();
+    // Nếu không có key, trả về null để xử lý logic dummy
+    if (!key || key === "dummy_key") return null;
+    return new GoogleGenAI({ apiKey: key });
+};
+
 const MODEL_NAME = 'gemini-3-flash-preview';
 
+const cleanJsonString = (text: string): string => {
+    let cleanText = text.trim();
+    if (cleanText.startsWith('```')) {
+        cleanText = cleanText.replace(/^```(json)?|```$/g, '');
+    }
+    return cleanText.trim();
+};
+
+// Hàm kiểm tra kết nối API
+export const validateConnection = async (key: string) => {
+    try {
+        const client = new GoogleGenAI({ apiKey: key });
+        // Gọi thử model với prompt đơn giản
+        await client.models.generateContent({
+            model: MODEL_NAME,
+            contents: "Hello",
+        });
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, message: error.message };
+    }
+};
+
 export const generateDebtReport = async (customer: Customer, invoices: Invoice[]) => {
+  const ai = getAIClient();
+  if (!ai) {
+      return "Chưa cấu hình API Key. Vui lòng vào Cài đặt -> Kết nối AI để nhập Key.";
+  }
+  
   try {
     const customerInvoices = invoices.filter(inv => inv.customerId === customer.id);
     const unpaidInvoices = customerInvoices.filter(inv => inv.status !== 'PAID');
     
     const prompt = `
-      Bạn là một trợ lý kế toán chuyên nghiệp cho công ty dịch vụ sửa chữa.
-      Hãy phân tích tình hình công nợ của khách hàng sau và đưa ra một đoạn nhận xét ngắn gọn (dưới 100 từ) về rủi ro và đề xuất hành động.
-      
-      Khách hàng: ${customer.name}
-      Tổng nợ hiện tại: ${customer.totalDebt.toLocaleString()} VNĐ
-      Số lượng hóa đơn chưa thanh toán: ${unpaidInvoices.length}
-      Chi tiết các hóa đơn chưa trả hết:
-      ${unpaidInvoices.map(inv => `- Mã ${inv.id}: Còn nợ ${(inv.totalAmount - inv.paidAmount).toLocaleString()} VNĐ`).join('\n')}
-      
-      Trả lời bằng Tiếng Việt, giọng văn chuyên nghiệp, lịch sự.
+      Bạn là trợ lý kế toán cho cửa hàng sữa.
+      Khách: ${customer.name}. Tổng nợ: ${customer.totalDebt.toLocaleString()} VNĐ.
+      Số hóa đơn chưa trả: ${unpaidInvoices.length}.
+      Hãy nhận xét ngắn gọn về rủi ro và đề xuất cách thu nợ khéo léo.
     `;
 
     const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: prompt,
+        model: MODEL_NAME,
+        contents: prompt
     });
-    
-    return response.text;
+    return response.text || "Không có phản hồi.";
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "Không thể phân tích dữ liệu lúc này.";
+    return "Lỗi kết nối AI (Kiểm tra lại Key).";
   }
 };
 
 export const suggestRepairNote = async (symptoms: string) => {
+  const ai = getAIClient();
+  if (!ai) return "Vui lòng nhập API Key để nhận gợi ý.";
+
   try {
     const prompt = `
-      Bạn là kỹ thuật viên trưởng của trung tâm sửa chữa máy tính/điện tử.
-      Dựa trên mô tả lỗi của khách hàng: "${symptoms}"
-      Hãy gợi ý một ghi chú kỹ thuật ngắn gọn để in vào phiếu tiếp nhận dịch vụ.
-      Ghi chú nên bao gồm: Dự đoán lỗi, Hướng kiểm tra.
-      Định dạng trả về: Văn bản thuần túy, không markdown cầu kỳ, ngắn gọn.
+      Khách hàng tìm sữa/gặp vấn đề: "${symptoms}"
+      Gợi ý 1 câu ngắn gọn cho nhân viên bán hàng tư vấn loại sữa phù hợp.
     `;
-
     const response = await ai.models.generateContent({
         model: MODEL_NAME,
         contents: prompt
     });
-    return response.text;
+    return response.text || "";
   } catch (error) {
-      console.error("Gemini Error:", error);
-      return "Lỗi khi tạo gợi ý.";
+      return "";
   }
 }
 
 export const analyzeBusinessHealth = async (invoices: Invoice[]) => {
+  const ai = getAIClient();
+  if (!ai) return "Chế độ Demo: Vui lòng nhập API Key trong Cài đặt để phân tích dữ liệu thực.";
+
   try {
      const totalRevenue = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
-     const totalDebt = invoices.reduce((sum, inv) => sum + (inv.totalAmount - inv.paidAmount), 0);
-     const paidRatio = totalRevenue > 0 ? ((totalRevenue - totalDebt) / totalRevenue * 100).toFixed(1) : "0";
-
-     const prompt = `
-        Dựa trên số liệu kinh doanh:
-        - Tổng doanh thu: ${totalRevenue.toLocaleString()} VNĐ
-        - Tổng công nợ chưa thu: ${totalDebt.toLocaleString()} VNĐ
-        - Tỷ lệ thu hồi nợ: ${paidRatio}%
-        
-        Hãy đưa ra 3 lời khuyên chiến lược ngắn gọn để cải thiện dòng tiền cho công ty sửa chữa & thương mại.
-     `;
-
-    const response = await ai.models.generateContent({
+     const prompt = `Phân tích ngắn gọn hiệu quả kinh doanh dựa trên doanh thu: ${totalRevenue}`;
+     const response = await ai.models.generateContent({
         model: MODEL_NAME,
         contents: prompt
-    });
-    return response.text;
+     });
+    return response.text || "";
   } catch (error) {
-    return "Không thể phân tích dữ liệu kinh doanh.";
+    return "Không thể phân tích dữ liệu.";
   }
 }
 
-// Configuration for Invoice Parsing Schema
+// Schema
 const invoiceSchema = {
     type: Type.OBJECT,
+    description: "Invoice data",
     properties: {
         invoiceNumber: { type: Type.STRING },
         date: { type: Type.STRING },
         partnerName: { type: Type.STRING },
         taxCode: { type: Type.STRING },
         taxRate: { type: Type.NUMBER },
-        type: { 
-            type: Type.STRING, 
-            description: "Invoice type: 'IN' (Input/Purchase) or 'OUT' (Output/Sale). Derived from buyer/seller context." 
-        },
-        internalCompany: {
-            type: Type.STRING,
-            description: "Values: 'TNC' or 'TAY_PHAT'. Indicates which of my companies is the participant in the invoice."
-        },
+        type: { type: Type.STRING },
+        internalCompany: { type: Type.STRING },
         items: {
             type: Type.ARRAY,
             items: {
@@ -113,41 +131,25 @@ const invoiceSchema = {
                 }
             }
         }
-    }
+    },
+    required: ["invoiceNumber", "partnerName", "items"]
 };
 
 const MY_COMPANIES_CONTEXT = `
-MY COMPANIES (The "Home" entities):
-1. "CÔNG TY CỔ PHẦN MÁY TÍNH - THIẾT BỊ TRƯỜNG HỌC TÂY NINH" (Matches: TNC, Máy Tính Tây Ninh, Trường Học Tây Ninh, Công Ty Cổ Phần Máy Tính - Thiết Bị Trường Học Tây Ninh). Internal Code: TNC.
-2. "CÔNG TY TNHH THIẾT BỊ GIẢI PHÁP TÂY PHÁT" (Matches: Tây Phát, Giải Pháp Tây Phát, Công Ty TNHH Thiết Bị Giải Pháp Tây Phát). Internal Code: TAY_PHAT.
+MY COMPANIES:
+1. "CÔNG TY SỮA TÂY NINH" (Matches: TNC).
+2. "ĐẠI LÝ SỮA TÂY PHÁT" (Matches: TAY_PHAT).
 `;
 
-// AI Parser for VAT Invoice from Text (PDF extracted text)
 export const parseInvoiceFromText = async (text: string) => {
-    try {
-        const prompt = `
-            You are an expert VAT invoice parser. Extract invoice information from the provided text.
-            ${MY_COMPANIES_CONTEXT}
-            
-            Tasks:
-            1. Identify the SELLER and the BUYER.
-            2. Determine 'type':
-               - 'OUT' (Output/Sale): If the SELLER matches one of MY COMPANIES (TNC or TAY_PHAT).
-               - 'IN' (Input/Purchase): If the BUYER matches one of MY COMPANIES (TNC or TAY_PHAT).
-            3. Determine 'internalCompany':
-               - If the participating My Company is related to "CÔNG TY CỔ PHẦN MÁY TÍNH - THIẾT BỊ TRƯỜNG HỌC TÂY NINH", set 'TNC'.
-               - If the participating My Company is related to "CÔNG TY TNHH THIẾT BỊ GIẢI PHÁP TÂY PHÁT", set 'TAY_PHAT'.
-               - If 'type' is OUT, check the Seller. If 'type' is IN, check the Buyer.
-            4. Extract 'partnerName': The name of the other entity (the one that is NOT My Company).
-            5. Extract 'taxCode': The tax code of the PARTNER.
-            6. Extract 'invoiceNumber', 'date' (YYYY-MM-DD), 'taxRate' (e.g. 8, 10).
-            7. Extract line items.
+    const ai = getAIClient();
+    if (!ai) {
+        console.warn("Missing API Key");
+        return null;
+    }
 
-            Text to parse: "${text}"
-            
-            Return JSON matching the schema.
-        `;
-        
+    try {
+        const prompt = `Extract VAT invoice data. ${MY_COMPANIES_CONTEXT} Text: "${text}"`;
         const response = await ai.models.generateContent({
             model: MODEL_NAME,
             contents: prompt,
@@ -156,36 +158,28 @@ export const parseInvoiceFromText = async (text: string) => {
                 responseSchema: invoiceSchema
             }
         });
-
-        return JSON.parse(response.text);
+        return JSON.parse(cleanJsonString(response.text || "{}"));
     } catch (error) {
-        console.error("Gemini Parse Error", error);
-        return null;
+        console.error("Parse Text Error:", error);
+        throw error; // Throw error to handle in UI
     }
 }
 
-// AI Parser for VAT Invoice from Image Base64 (OCR)
 export const parseInvoiceFromImage = async (base64Data: string, mimeType: string) => {
+    const ai = getAIClient();
+    if (!ai) {
+        console.warn("Missing API Key");
+        return null;
+    }
+
     try {
-        const prompt = `
-            Analyze this invoice image. 
-            ${MY_COMPANIES_CONTEXT}
-            
-            Tasks:
-            1. Identify SELLER and BUYER.
-            2. Determine 'type' (IN/OUT) based on whether My Company is Buyer (IN) or Seller (OUT).
-            3. Determine 'internalCompany' (TNC or TAY_PHAT) based on the name of My Company found in the invoice.
-            4. Extract invoiceNumber, date, partnerName (the other party), taxCode (of partner), items, taxRate.
-            
-            Return in JSON format.
-        `;
-        
+        const prompt = `Extract invoice data. ${MY_COMPANIES_CONTEXT}`;
         const response = await ai.models.generateContent({
-            model: MODEL_NAME, 
+            model: MODEL_NAME,
             contents: {
                 parts: [
-                    { inlineData: { mimeType, data: base64Data } },
-                    { text: prompt }
+                    { text: prompt },
+                    { inlineData: { mimeType: mimeType, data: base64Data } }
                 ]
             },
             config: {
@@ -193,10 +187,9 @@ export const parseInvoiceFromImage = async (base64Data: string, mimeType: string
                 responseSchema: invoiceSchema
             }
         });
-
-        return JSON.parse(response.text);
+        return JSON.parse(cleanJsonString(response.text || "{}"));
     } catch (error) {
-        console.error("Gemini Image Parse Error", error);
-        return null;
+        console.error("Image Parse Error:", error);
+        throw error; // Throw error to handle in UI
     }
 }
